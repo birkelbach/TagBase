@@ -1,0 +1,4 @@
+When a tag is re-added and everything is the same except the size grows we are not initializing the new area to zero.
+
+The opendax code had an idea of "special tags" that had read / write hooks.  Maybe we give all tags read / write hooks.
+We might also give them a delete hook to deal with outdated handles. ???
