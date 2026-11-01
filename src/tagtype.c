@@ -40,7 +40,7 @@ _cdt_destroy(cdt_t *cdt) {
  * appends that member to the compound datatype passed as *cdt.  Returns
  * 0 on success and dax error code on failure */
 static int
-cdt_append(cdt_t *cdt, char *str)
+cdt_append(tag_db_t *db, cdt_t *cdt, char *str)
 {
     int retval, count;
     cdt_member *this, *new;
@@ -62,7 +62,7 @@ cdt_append(cdt_t *cdt, char *str)
     }
 
     /* Check that the type is valid */
-    if( (type = type_get_type(typestr)) == 0 ) {
+    if( (type = type_get_type(db, typestr)) == 0 ) {
         return ERR_ARG;
     }
 
@@ -139,7 +139,7 @@ cdt_create(tag_db_t *db, char *str, int *error) {
         free(tmp);
         return 0;
     }
-    if((type = type_get_type(name))) {
+    if((type = type_get_type(db, name))) {
         serialize_datatype(db, type, &serial);
         if(strcmp(serial, str)) { /* This means the two CDT's are not equal */
             if(error != NULL) *error = ERR_DUPLICATE;
@@ -159,7 +159,7 @@ cdt_create(tag_db_t *db, char *str, int *error) {
     cdt.members = NULL;
 
     while((member = strtok_r(NULL, ":", &last))) {
-        result = cdt_append(&cdt, member);
+        result = cdt_append(db, &cdt, member);
         if(result) {
             _cdt_destroy(&cdt);
             if(error != NULL) *error = result;
@@ -215,8 +215,7 @@ cdt_dec_refcount(tag_db_t *db, tag_type type) {
 /* Returns the type of the datatype with given name
  * If the datatype isn't found it returns 0 */
 tag_type
-type_get_type(char *name)
-{
+type_get_type(tag_db_t *db, char *name) {
     int n;
 
     if(name == NULL) return 0;
@@ -253,28 +252,28 @@ type_get_type(char *name)
     if(!strcasecmp(name, "LREAL"))
         return TYPE_LREAL;
 
-    // for(n = 0; n < _datatype_index; n++) {
-    //     if(!strcasecmp(name, _datatypes[n].name)) {
-    //         return CDT_TO_TYPE(n);
-    //     }
-    // }
+    for(n = 0; n < db->datatype_index; n++) {
+        if(!strcasecmp(name, db->datatypes[n].name)) {
+            return CDT_TO_TYPE(n);
+        }
+    }
     return 0;
 }
 
 /* Returns a pointer to the name of the datatype given
  * by 'type'.  Returns NULL on failure */
 const char *
-type_get_name(tag_type type)
+type_get_name(tag_db_t *db, tag_type type)
 {
     int index;
 
     if(IS_CUSTOM(type)) {
-        // index = CDT_TO_INDEX(type);
-        // if(index >= 0 && index < _datatype_index) {
-        //     return _datatypes[index].name;
-        // } else {
-        //     return NULL;
-        // }
+        index = CDT_TO_INDEX(type);
+        if(index >= 0 && index < db->datatype_index) {
+            return db->datatypes[index].name;
+        } else {
+            return NULL;
+        }
         return NULL;
     } else {
         switch (type) {
@@ -516,7 +515,7 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
 
     while(this != NULL) {
         size += strlen(this->name);
-        size += strlen(type_get_name(this->type));
+        size += strlen(type_get_name(db, this->type));
         snprintf(test, TAGNAME_SIZE + 1, "%d", this->count);
         size += strlen(test);
         size += 3; /* This is for the ':' and the two commas */
@@ -535,7 +534,7 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
         strncat(*str, ":", size - 1);
         strncat(*str, this->name, size - 1);
         strncat(*str, ",", size);
-        strncat(*str, type_get_name(this->type), size - 1);
+        strncat(*str, type_get_name(db, this->type), size - 1);
         strncat(*str, ",", size - 1);
         snprintf(test, TAGNAME_SIZE + 1, "%d", this->count);
         strncat(*str, test, size - 1);
@@ -548,46 +547,45 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
 /* Figures out how large the datatype is and returns
  * that size in bytes.  This function is recursive */
 int
-type_size(tag_type type)
+type_size(tag_db_t *db, tag_type type)
 {
     int size = 0;
-    // int result;
-    // unsigned int pos = 0; /* Bit position within the data area */
-    // cdt_member *this;
+    int result;
+    unsigned int pos = 0; /* Bit position within the data area */
+    cdt_member *this;
 
-    if( type_get_name(type) == NULL ) {
+    if( type_get_name(db, type) == NULL ) {
         return ERR_NOTFOUND;
     }
 
     if(IS_CUSTOM(type)) {
-        // this = _datatypes[CDT_TO_INDEX(type)].members;
-        // while (this != NULL) {
-        //     if(this->type == TYPE_BOOL) {
-        //         pos += this->count; /* BOOLs are easy just add the number of bits */
-        //     } else {
-        //         /* Since it's not a bool we need to align to the next byte.
-        //          * To align it we set all the lower three bits to 1 and then
-        //          * increment. */
-        //         if(pos % 8 != 0) { /* Do nothing if already aligned */
-        //             pos |= 0x07;
-        //             pos++;
-        //         }
-        //         if(IS_CUSTOM(this->type)) {
-        //             result = type_size(this->type);
-        //             pos += (result * this->count) * 8;
-        //         } else {
-        //             /* This gets the size in bits */
-        //             pos += TYPESIZE(this->type) * this->count;
-        //         }
-        //     }
-        //     this = this->next;
-        // }
-        // if(pos) {
-        //     size = (pos - 1)/8 + 1;
-        // } else {
-        //     size = 0;
-        // }
-        size = 0;
+        this = db->datatypes[CDT_TO_INDEX(type)].members;
+        while (this != NULL) {
+            if(this->type == TYPE_BOOL) {
+                pos += this->count; /* BOOLs are easy just add the number of bits */
+            } else {
+                /* Since it's not a bool we need to align to the next byte.
+                 * To align it we set all the lower three bits to 1 and then
+                 * increment. */
+                if(pos % 8 != 0) { /* Do nothing if already aligned */
+                    pos |= 0x07;
+                    pos++;
+                }
+                if(IS_CUSTOM(this->type)) {
+                    result = type_size(db, this->type);
+                    pos += (result * this->count) * 8;
+                } else {
+                    /* This gets the size in bits */
+                    pos += TYPESIZE(this->type) * this->count;
+                }
+            }
+            this = this->next;
+        }
+        if(pos) {
+            size = (pos - 1)/8 + 1;
+        } else {
+            size = 0;
+        }
     } else { /* Not IS_CUSTOM() */
         size = TYPESIZE(type) / 8; /* Size in bytes */
     }

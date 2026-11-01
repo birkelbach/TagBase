@@ -38,6 +38,7 @@
 #define ERR_DUPLICATE       -12
 #define ERR_DELETED         -13
 #define ERR_TIMEOUT         -14
+#define ERR_EXPIRED         -15
 
 
 /* Tag attribute bits */
@@ -143,11 +144,15 @@ typedef uint32_t tag_type;
 /* Object Pointers */
 /*! Opaque pointer for a database object */
 typedef struct tag_db_t tag_db_t;
+
 /*! Opaque pinter for tag object */
 typedef struct tag_t tag_t;
 
 /*! Opaque pointer for tag group */
 typedef struct tag_group_id tag_group_id;
+
+/*! Opaque pointer for tag handle */
+typedef struct tag_handle_t tag_handle_t;
 
 /* Easy way to store base datatypes.  Doesn't include BOOL */
 // typedef union tag_type_union {
@@ -225,15 +230,14 @@ typedef struct tag_group_id tag_group_id;
 // #define INDEX_DBSIZE         4
 // #define INDEX_STARTED        5
 // #define INDEX_OVRD_INSTALLED 6
-// #define INDEX_OVRD_SET       7
+// #define INDEX_OVRD_SET   DF
 
 #define CDT_FLAGS_RETAINED 0x80;
 
 typedef void (*event_function)(void *);
-
-
 /* type definition of the virtual tag function prototype */
 typedef int vfunction(tag_t *tag, int offset, void *data, int size, void *userdata);
+
 
 /* Tag Database Handling Functions */
 tag_db_t *new_tagbase(void);
@@ -246,34 +250,34 @@ tag_t *tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t
 tag_t * tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, int *err);
 // int tag_del(tag_index idx);
 tag_t *tag_get_by_name(tag_db_t *db, char *name);
-// int tag_gethandle(tag_handle_t *h, char *str, int count);
+tag_handle_t *tag_gethandle(tag_db_t *db, char *str, int count, int *err);
 void tag_list(tag_db_t *db, void (*f)(tag_t *, void *), void *udata);
 const char *tag_get_name(tag_t *tag);
 int tag_is_readonly(tag_t *tag);
 int tag_is_virtual(tag_t *tag);
 int tag_is_queue(tag_t *tag);
 //int is_tag_owned(int fd, tag_index idx);
-int tag_get_size(tag_t *tag);
+int tag_get_size(tag_db_t *db, tag_t *tag);
 // int validate_tagname(char *name);
 //
 // /* Database reading and writing functions */
-// int tag_read_raw(tag_index index, int offset, void *data, int size);
-// int tag_write_raw(tag_index index, int offset, void *data, int size);
-// int tag_mask_write_raw(tag_index index, int offset, void *data, void *mask, int size);
-// int tag_read_handle(tag_handle_t h, void *data);
-// int tag_write_handle(tag_handle_t h, void *data);
-// int tag_mask_write_handle(tag_handle_t h, void *data, void *mask);
+int tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
+int tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
+int tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size);
+int tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data);
+int tag_write_handle(tag_db_t *db, tag_handle_t *h, void *data);
+int tag_mask_write_handle(tag_db_t *db, tag_handle_t *h, void *data, void *mask);
 //
 // /* Perform an atomic operation on the data */
 // int atomic_op(tag_handle_t h, void *data, uint16_t op);
 
 // /* Custom DataType functions */
 tag_type cdt_create(tag_db_t *db, char *str, int *error);
-tag_type type_get_type(char *name);
-const char *type_get_name(tag_type type);
+tag_type type_get_type(tag_db_t *db, char *name);
+const char *type_get_name(tag_db_t *db, tag_type type);
 // cdt_t *cdt_get_entry(tag_type type);
 // int cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata));
-int type_size(tag_type type);
+int type_size(tag_db_t *db, tag_type type);
 int serialize_datatype(tag_db_t *db, tag_type type, char **str);
 //
 // /* The event stuff is defined in events.c */

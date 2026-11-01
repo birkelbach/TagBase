@@ -239,6 +239,7 @@ new_tagbase(void) {
     }
     db->datatype_size = DATATYPE_SIZE;
     db->datatype_index = 0;
+    db->sentinel = 0;
     return db;
 }
 
@@ -278,12 +279,12 @@ validate_tagname(char *name)
  * This will also return 0 when the tag has been deleted
  * which is designated by zero type and zero count */
 int
-tag_get_size(tag_t *tag)
+tag_get_size(tag_db_t *db, tag_t *tag)
 {
     if(tag->type == TYPE_BOOL)
         return (tag->count-1) / 8 + 1;
     else
-        return type_size(tag->type)  * tag->count;
+        return type_size(db, tag->type)  * tag->count;
 }
 
 static inline void
@@ -303,7 +304,7 @@ _set_attribute(tag_t *tag, uint32_t attr) {
 }
 
 static int
-_queue_add(tag_t *tag, tag_type type, unsigned int count) {
+_queue_add(tag_db_t *db, tag_t *tag, tag_type type, unsigned int count) {
     virt_functions vf;
     tag_queue *q;
     int size;
@@ -312,7 +313,7 @@ _queue_add(tag_t *tag, tag_type type, unsigned int count) {
     if(q == NULL) {
         return ERR_ALLOC;
     }
-    size = type_size(type) * count;
+    size = type_size(db, type) * count;
     q->size = size;
     q->count = count;
     q->type = type;
@@ -361,7 +362,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
         return NULL;
     }
 
-    if(type_get_name(type) == NULL) {
+    if(type_get_name(db, type) == NULL) {
         //logDebug(log_TAGBASE, "tag_add() passed an unknown datatype %x", type);
         if(err != NULL) *err = ERR_ARG; /* is the datatype valid */
         return NULL;
@@ -376,7 +377,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     if(type == TYPE_BOOL) {
         size = (count-1) / 8 + 1;
     } else {
-        size = type_size(type) * count;
+        size = type_size(db, type) * count;
     }
 
     /* Check for an existing tagname in the database */
@@ -430,7 +431,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     /* If the type is a queue the data area will be allocated in the
      * queue_add() function instead of here */
     if(IS_QUEUE(type)) {
-        _queue_add(new_tag, type, count);
+        _queue_add(db, new_tag, type, count);
     } else {
         /* Allocate the data area */
         if((new_tag->data = malloc(size)) == NULL) {
@@ -681,208 +682,193 @@ tag_is_queue(tag_t *tag) {
 }
 
 
-// static int
-// _tag_read_raw(tag_index idx, int offset, void *data, int size) {
-//     virt_functions *vf;
-//     int n, result;
-//     uint8_t x, y;
+static int
+_tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
+    virt_functions *vf;
+    int n, result;
+    uint8_t x, y;
 
-//     /* determine if it's a virtual tag */
-//     if(_db[idx].attr & TAG_ATTR_VIRTUAL) {
-//         /* virtual tags read their data from a function that should be
-//          * pointed to by the *data pointer */
-//         vf = (virt_functions *)_db[idx].data;
-//         if(vf->rf == NULL) return ERR_WRITEONLY;
-//         return vf->rf(idx, offset, data, size, vf->userdata);
-//     } else {
-//         /* Bounds check size */
-//         if( (offset + size) > tag_get_size(idx)) {
-//             return ERR_2BIG;
-//         }
-//         if(_db[idx].data == NULL) {
-//             return ERR_DELETED;
-//         }
-//         if(_db[idx].attr & TAG_ATTR_OVR_SET) {
-//             for(n=0; n<size; n++) {
-//                  x = _db[idx].odata[n+offset] & _db[idx].omask[n+offset];
-//                  y = _db[idx].data[n+offset] & ~_db[idx].omask[n+offset];
-//                  ((uint8_t *)data)[n] = x | y;
-//             }
-//         } else {
-//             /* Copy the data into the right place. */
-//             memcpy(data, &(_db[idx].data[offset]), size);
-//         }
+    /* determine if it's a virtual tag */
+    if(tag->attr & TAG_ATTR_VIRTUAL) {
+        /* virtual tags read their data from a function that should be
+         * pointed to by the *data pointer */
+        vf = (virt_functions *)tag->data;
+        if(vf->rf == NULL) return ERR_WRITEONLY;
+        return vf->rf(tag, offset, data, size, vf->userdata);
+    } else {
+        /* Bounds check size */
+        if( (offset + size) > tag_get_size(db, tag)) {
+            return ERR_2BIG;
+        }
+        if(tag->data == NULL) {
+            return ERR_DELETED;
+        }
+        if(tag->attr & TAG_ATTR_OVR_SET) {
+            for(n=0; n<size; n++) {
+                 x = tag->odata[n+offset] & tag->omask[n+offset];
+                 y = tag->data[n+offset] & ~tag->omask[n+offset];
+                 ((uint8_t *)data)[n] = x | y;
+            }
+        } else {
+            /* Copy the data into the right place. */
+            memcpy(data, &(tag->data[offset]), size);
+        }
 
-//         /* If the tag is special then call the hook */
-//         if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-//             result = special_tag_read(idx, offset, data, size);
-//             if(result) {
-//                 return result;
-//             }
-//         }
-//     }
+        /* If the tag is special then call the hook */
+        // if(tag->attr & TAG_ATTR_SPECIAL) {
+        //     result = special_tag_read(tag, offset, data, size);
+        //     if(result) {
+        //         return result;
+        //     }
+        // }
+    }
 
-//     return 0;
-// }
-
-
-// /*!
-//  * Low level tag read function.
-//  *
-//  * This function reads the data raw
-//  *
-//  * @param idx The tags index in the tag database
-//  * @param offset The byte offset in the tags data area
-//  * @param data Pointer to where the return data should be stored
-//  * @param size The amount of data to read
-//  * @returns Zero on success or an error code otherwise
-//  */
-// int
-// tag_read_raw(tag_index idx, int offset, void *data, int size) {
-//     int result;
-
-//         /* Bounds check handle */
-//     if(idx < 0 || idx >= _tagnextindex) {
-//         return ERR_ARG;
-//     }
-
-//     pthread_mutex_lock(&_db[idx].lock);
-//     result = _tag_read_raw(idx, offset, data, size);
-//     pthread_mutex_unlock(&_db[idx].lock);
-
-//     return result;
-// }
+    return 0;
+}
 
 
-// static int
-// _tag_write_raw(tag_index idx, int offset, void *data, int size)
-// {
-//     virt_functions *vf;
-//     int result;
+/*!
+ * Low level tag read function.
+ *
+ * This function reads the data raw
+ *
+ * @param idx The tags index in the tag database
+ * @param offset The byte offset in the tags data area
+ * @param data Pointer to where the return data should be stored
+ * @param size The amount of data to read
+ * @returns Zero on success or an error code otherwise
+ */
+int
+tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
+    int result;
 
-//     /* determine if it's a virtual tag */
-//     if(_db[idx].attr & TAG_ATTR_VIRTUAL) {
-//        /* virtual tags read their data from a function that should be
-//         * pointed to by the *data pointer */
-//        vf = (virt_functions *)_db[idx].data;
-//        if(vf->wf == NULL) return ERR_READONLY;
-//        return vf->wf(idx, offset, data, size, vf->userdata);
-//     } else {
-//         /* Bounds check size */
-//         if( (offset + size) > tag_get_size(idx)) {
-//             return ERR_2BIG;
-//         }
-//         if(_db[idx].data == NULL) {
-//             return ERR_DELETED;
-//         }
-//         if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-//             result = special_tag_write(idx, offset, data, size);
-//             if(result) {
-//                 return result;
-//             }
-//         }
-//         /* Copy the data into the right place. */
-//         memcpy(&(_db[idx].data[offset]), data, size);
-//         event_check(idx, offset, size);
-//     }
-//     if(_db[idx].attr & TAG_ATTR_RETAIN) {
-//         ret_tag_write(idx);
-//     }
 
-//     return 0;
-// }
+    pthread_mutex_lock(&tag->lock);
+    result = _tag_read_raw(db, tag, offset, data, size);
+    pthread_mutex_unlock(&tag->lock);
 
-// /*!
-//  * Low level tag writing function.  This function bypasses the read-only
-//  * attribute and writes anyway.  It will also not carry forward a data
-//  * mapping.  It should not be called from user facing functions.
-//  *
-//  * @param idx The tags index in the tag database
-//  * @param offset The byte offset in the tags data area
-//  * @param data Pointer to the data buffer
-//  * @param size The amount of data to read
-//  * @returns Zero on success or an error code otherwise
-//  */
-// int
-// tag_write_raw(tag_index idx, int offset, void *data, int size) {
-//     int result;
+    return result;
+}
 
-//     /* Bounds check handle */
-//     if(idx < 0 || idx >= _tagnextindex) {
-//         return ERR_ARG;
-//     }
 
-//     pthread_mutex_lock(&_db[idx].lock);
-//     result = _tag_write_raw(idx, offset, data, size);
-//     pthread_mutex_unlock(&_db[idx].lock);
+static int
+_tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
+    virt_functions *vf;
+    int result;
 
-//     return result;
-// }
+    /* determine if it's a virtual tag */
+    if(tag->attr & TAG_ATTR_VIRTUAL) {
+       /* virtual tags read their data from a function that should be
+        * pointed to by the *data pointer */
+       vf = (virt_functions *)tag->data;
+       if(vf->wf == NULL) return ERR_READONLY;
+       return vf->wf(tag, offset, data, size, vf->userdata);
+    } else {
+        /* Bounds check size */
+        if( (offset + size) > tag_get_size(db, tag)) {
+            return ERR_2BIG;
+        }
+        if(tag->data == NULL) {
+            return ERR_DELETED;
+        }
+        // if(tag->attr & TAG_ATTR_SPECIAL) {
+        //     result = special_tag_write(tag, offset, data, size);
+        //     if(result) {
+        //         return result;
+        //     }
+        // }
+        /* Copy the data into the right place. */
+        memcpy(&(tag->data[offset]), data, size);
+        //event_check(tag, offset, size);
+    }
+    // if(tag->attr & TAG_ATTR_RETAIN) {
+    //     ret_tag_write(tag);
+    // }
+
+    return 0;
+}
+
+/*!
+ * Low level tag writing function.  This function bypasses the read-only
+ * attribute and writes anyway.  It will also not carry forward a data
+ * mapping.  It should not be called from user facing functions.
+ *
+ * @param idx The tags index in the tag database
+ * @param offset The byte offset in the tags data area
+ * @param data Pointer to the data buffer
+ * @param size The amount of data to read
+ * @returns Zero on success or an error code otherwise
+ */
+int
+tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
+    int result;
+
+    pthread_mutex_lock(&tag->lock);
+    result = _tag_write_raw(db, tag, offset, data, size);
+    pthread_mutex_unlock(&tag->lock);
+
+    return result;
+}
 
 
 
-// static int
-// _tag_mask_write_raw(tag_index idx, int offset, void *data, void *mask, int size) {
-//     uint8_t *db, *newdata, *newmask;
-//     int n, result;
+static int
+_tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size) {
+    uint8_t *dbi, *newdata, *newmask;
+    int n, result;
 
-//     /* We don't allow masked writes to virtual tags.  This would be
-//      * too ambiguous */
-//     if(_db[idx].attr & TAG_ATTR_VIRTUAL) return ERR_ILLEGAL;
-//     /* Bounds check size */
-//     if( (offset + size) > tag_get_size(idx)) {
-//         return ERR_2BIG;
-//     }
-//     if(_db[idx].data == NULL) {
-//         return ERR_DELETED;
-//     }
-//     if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-//         result = special_tag_mask_write(idx, offset, data, mask, size);
-//         if(result) return result;
-//     }
+    /* We don't allow masked writes to virtual tags.  This would be
+     * too ambiguous */
+    if(tag->attr & TAG_ATTR_VIRTUAL) return ERR_ILLEGAL;
+    /* Bounds check size */
+    if( (offset + size) > tag_get_size(db, tag)) {
+        return ERR_2BIG;
+    }
+    if(tag->data == NULL) {
+        return ERR_DELETED;
+    }
+    // if(tag->attr & TAG_ATTR_SPECIAL) {
+    //     result = special_tag_mask_write(tag, offset, data, mask, size);
+    //     if(result) return result;
+    // }
 
-//     db = &_db[idx].data[offset];
-//     newdata = (uint8_t *)data;
-//     newmask = (uint8_t *)mask;
-//     for(n = 0; n < size; n++) {
-//         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
-//     }
-//     event_check(idx, offset, size);
+    dbi = &tag->data[offset];
+    newdata = (uint8_t *)data;
+    newmask = (uint8_t *)mask;
+    for(n = 0; n < size; n++) {
+        dbi[n] = (newdata[n] & newmask[n]) | (dbi[n] & ~newmask[n]);
+    }
+    //event_check(tag, offset, size);
 
-//     if(_db[idx].attr & TAG_ATTR_RETAIN) {
-//         ret_tag_write(idx);
-//     }
+    // if(tag->attr & TAG_ATTR_RETAIN) {
+    //     ret_tag_write(tag);
+    // }
 
-//     return 0;
-// }
+    return 0;
+}
 
-// /*!
-//  * Low level tag masked write function.  Writes data to the data area
-//  * of the given tag but only if the corresponding mask bit(s) are set.
-//  * This function bypasses the read-only attribute and writes anyway.
-//  * It also does not carry forward a data mapping.  It should not
-//  * be called from user facing functions.
-//  *
-//  * @param idx The tags index in the tag database
-//  * @param offset The byte offset in the tags data area
-//  * @param data Pointer to the data buffer
-//  * @param mask Pointer to the mask data buffer
-//  * @param size The amount of data to read
-//  * @returns Zero on success or an error code otherwise
-//  */
-// int
-// tag_mask_write_raw(tag_index idx, int offset, void *data, void *mask, int size) {
-//     int result;
+/*!
+ * Low level tag masked write function.  Writes data to the data area
+ * of the given tag but only if the corresponding mask bit(s) are set.
+ * This function bypasses the read-only attribute and writes anyway.
+ * It also does not carry forward a data mapping.  It should not
+ * be called from user facing functions.
+ *
+ * @param idx The tags index in the tag database
+ * @param offset The byte offset in the tags data area
+ * @param data Pointer to the data buffer
+ * @param mask Pointer to the mask data buffer
+ * @param size The amount of data to read
+ * @returns Zero on success or an error code otherwise
+ */
+int
+tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size) {
+    int result;
 
-//     /* Bounds check handle */
-//     if(idx < 0 || idx >= _tagnextindex) {
-//         return ERR_ARG;
-//     }
 
-//     pthread_mutex_lock(&_db[idx].lock);
-//     result = _tag_mask_write_raw(idx, offset, data, mask, size);
-//     pthread_mutex_unlock(&_db[idx].lock);
+    pthread_mutex_lock(&tag->lock);
+    result = _tag_mask_write_raw(db, tag, offset, data, mask, size);
+    pthread_mutex_unlock(&tag->lock);
 
-//     return result;
-// }
-
+    return result;
+}

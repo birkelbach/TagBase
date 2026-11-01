@@ -26,6 +26,7 @@ add_definitions(-DTESTING) # Compiles some testing code into the library */
 
 set(test_list basic_test
               tag_avl_test
+              tag_handle_test
    )
 
 foreach(test IN LISTS test_list)

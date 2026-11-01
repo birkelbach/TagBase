@@ -8,6 +8,7 @@ add_library(tagbase tagbase.c
                     tagtype.c
                     tagvirtual.c
                     tagutility.c
+                    tagrw.c
             )
 
 target_link_libraries(tagbase pthread)

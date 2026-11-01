@@ -80,8 +80,27 @@ struct tag_db_t {
     cdt_t *datatypes;
     unsigned int datatype_size;
     unsigned int datatype_index;  /* Next datatype index */
+    /* sentinel is incremented when tags are deleted.  Handles will contain the sentinel
+       and any handle with a sentinel less than this number will have to be recreated */
+    unsigned int sentinel;
     tag_t *root;
 };
+
+/*!
+ * This structure is used to define a specific tag or a part of the tag for
+ * reading and writing.
+ */
+struct  tag_handle_t {
+    tag_t *ptr;            /*!< Pointer to the Tag */
+    char *str;             /*!< This string is the string that created the handle*/
+    uint32_t count;        /*!< The number of items represented by the handle */
+    uint32_t byte;         /*!< The byte offset where the data block starts */
+    unsigned char bit;     /*!< The bit offset */
+    uint32_t size;         /*!< The total size of the data block in bytes */
+    tag_type type;         /*!< The data type of the block */
+    unsigned int sentinel; /*!< Used to detect when tags have been deleted */
+};
+
 
 /* General Tag functions */
 int validate_tagname(char *name);
@@ -95,20 +114,6 @@ int read_queue(tag_t *tag, int offset, void *data, int size, void *userdata);
 /* Utility Functions */
 time_t get_time(void);
 
-
-
-/*!
- * This structure is used to define a specific tag or a part of the tag for
- * reading and writing.
- */
-// typedef struct {
-//     tag_index index;     /*!< The Database Index of the Tag */
-//     uint32_t byte;       /*!< The byte offset where the data block starts */
-//     unsigned char bit;   /*!< The bit offset */
-//     uint32_t count;      /*!< The number of items represented by the handle */
-//     uint32_t size;       /*!< The total size of the data block in bytes */
-//     tag_type type;       /*!< The data type of the block */
-// } tag_handle_t;
 
 /* Tag groups are an array of handles in each module */
 // typedef struct tag_group_t {
