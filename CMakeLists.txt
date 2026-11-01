@@ -21,13 +21,18 @@ option(BUILD_TESTING "Build the test suite" ON)
 
 find_library(HAVE_PTHREAD NAMES pthread)
 if( NOT HAVE_PTHREAD )
-message(FATAL_ERROR "Pthread Library is required and not installed")
+    message(FATAL_ERROR "Pthread Library is required and not installed")
 endif()
 
-# find_library(HAVE_OPENSSL NAMES ssl)
-# if( NOT HAVE_OPENSSL )
-#   message(FATAL_ERROR "OpenSSL Library is required and not installed")
-# endif()
+
+find_program(HAVE_ASCIIDOC_PDF NAMES asciidoctor-pdf)
+find_program(HAVE_ASCIIDOC NAMES asciidoctor)
+if(HAVE_ASCIIDOC_PDF)
+    message("Found Asciidoctor PDF" ${HAVE_ASCIIDOC_PDF})
+endif()
+if(HAVE_ASCIIDOC)
+    message("Found Asciidoctor" ${HAVE_ASCIIDOC_PDF})
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   message("Building Debug Symbols and Verbose Warnings")
@@ -41,4 +46,9 @@ add_subdirectory(src)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
+endif()
+
+if(BUILD_DOC)
+  message("Building Documentation")
+  add_subdirectory(doc)
 endif()

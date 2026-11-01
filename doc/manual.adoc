@@ -1,0 +1,16 @@
+= TagBase Library Developer’s Manual
+Phil Birkelbach
+:revdate: November 1, 2026
+:description: Open Source Tag Database Library
+:toc: left
+:source-highlighter: coderay
+:pdf-page-size: Letter
+:title-page:
+:copyright: (c)2026 Phil Birkelbach
+:sectnums:
+
+
+== Introduction
+
+include::introduction.adoc[]
+
