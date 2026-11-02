@@ -27,6 +27,7 @@ add_definitions(-DTESTING) # Compiles some testing code into the library */
 set(test_list basic_test
               tag_avl_test
               tag_handle_test
+              basic_read_write_test
    )
 
 foreach(test IN LISTS test_list)
@@ -35,3 +36,7 @@ foreach(test IN LISTS test_list)
     add_test(${test} ${test})
   set_tests_properties(${test} PROPERTIES TIMEOUT 5)
 endforeach()
+
+add_executable(avl_test avl_test.c ../src/avl_tree.c)
+add_test(avl_test avl_test)
+set_tests_properties(avl_test PROPERTIES TIMEOUT 5)
