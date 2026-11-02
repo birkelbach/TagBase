@@ -51,12 +51,13 @@ IN THE SOFTWARE.
   #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
 
-struct node_t {
+typedef struct node_t {
     void *data;
     struct node_t *left;
     struct node_t *right;
     int height;
-};
+} node_t;
+
 
 struct tree_t {
     int (*compare_function)(void *left, void *right);
@@ -258,19 +259,23 @@ avl_new_tree(int (*f)(void *left, void *right)) {
     return new_tree;
 }
 
+void
+avl_del_tree(struct tree_t *tree) {
+    if(tree != NULL) free(tree);
+}
 
 /* Insert a node with data.  The data pointer is never manipulated
  * by this library.  It is the responsibilty of the caller to
  * allocate and free whatever this pointer points to. */
 int
-avl_insert_node(tree_t *tree, void *data) {
+avl_insert_node(struct tree_t *tree, void *data) {
     tree->root = _insert_node(tree, tree->root, data);
     return 0;
 }
 
 
 void
-avl_delete_node(tree_t *tree, void *data) {
+avl_delete_node(struct tree_t *tree, void *data) {
     tree->root = _delete_node(tree, tree->root, data);
 }
 
@@ -278,7 +283,7 @@ avl_delete_node(tree_t *tree, void *data) {
 /* Traverses the tree looking for a node that matches 'key'
  * based on the compare function that is set in the tree */
 void *
-avl_search(tree_t *tree, void *key) {
+avl_search(struct tree_t *tree, void *key) {
     node_t *root = tree->root;
     int result;
 
@@ -288,9 +293,9 @@ avl_search(tree_t *tree, void *key) {
             return root->data;
         }
         if(result > 0) {
-            root = root->right;
-        } else {
             root = root->left;
+        } else {
+            root = root->right;
         }
     }
     return NULL;
@@ -301,7 +306,7 @@ avl_search(tree_t *tree, void *key) {
  * pointer to f() will be the node data and the second the udata
  * pointer passed to this function */
 void
-avl_inorder(tree_t *tree, void (*f)(void *, void *), void *udata) {
+avl_inorder(struct tree_t *tree, void (*f)(void *, void *), void *udata) {
     _inorder(tree->root, f, udata);
 }
 

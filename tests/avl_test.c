@@ -14,9 +14,13 @@ static int
 compare_function(void *left, void *right) {
     struct item *l = left;
     struct item *r = right;
+    if(left == NULL) TP("left null");
+    if(right == NULL) TP("right null");
+    //TP("comparing %s : %s", l->name, r->name);
     if(l->number < r->number) return -1;
     if(l->number > r->number) return 1;
-    else return 0;
+    //return strcmp(l->name, r->name);
+    return 0;
 }
 
 static void
@@ -29,6 +33,8 @@ print_function(void *data, void *udata) {
 int main(int argc, char *argv[]) {
 
     struct tree_t *tree = avl_new_tree(compare_function);
+    struct item search_item;
+    struct item *i;
 
     struct item items[] = {{"five", 5}, {"one", 1}, {"two", 2}, {"four", 4}, {"three", 3}, {"six", 6}};
 
@@ -38,21 +44,27 @@ int main(int argc, char *argv[]) {
 
     avl_inorder(tree, print_function, NULL);
 
-    avl_delete_node(tree, &items[2]);
+    search_item.name = "three";
+    search_item.number = 3;
+    i = avl_search(tree, &search_item);
+    xassert(i != NULL);
+    TP("\nFound %s - %d", i->name, i->number);
+
+
+    avl_delete_node(tree, &items[4]);
 
     TP("\nAfter deletion:");
     avl_inorder(tree, print_function, NULL);
 
-    struct item search_item;
-    search_item.name = "nope";
-    search_item.number = 4;
-    struct item *i = avl_search(tree, &search_item);
+    search_item.name = "six";
+    search_item.number = 6;
+    i = avl_search(tree, &search_item);
     xassert(i != NULL);
     TP("\nFound %s - %d", i->name, i->number);
 
     /* Should not find this one */
-    search_item.name = "nope";
-    search_item.number = 2;
+    search_item.name = "three";
+    search_item.number = 3;
     i = avl_search(tree, &search_item);
     xassert(i == NULL);
 

@@ -28,8 +28,8 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
-
 #include <tagbase.h>
+#include <avl_tree.h>
 #include "config.h"
 
 /* Initial size of the custom data types array in each data base*/
@@ -126,9 +126,8 @@ struct tag_db_t {
     /* sentinel is incremented when tags are deleted.  Handles will contain the sentinel
        and any handle with a sentinel less than this number will have to be recreated */
     unsigned int sentinel;
-    tag_t *root;
+    avl_tree_t *tree; /* Tag AVL Tree */
 };
-
 
 
 /* tagtype.c */

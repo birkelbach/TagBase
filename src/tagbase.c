@@ -42,198 +42,17 @@
 // static tag_index _dbsize = 0;         /* Size of the database and the index */
 
 
-// calculate the height of the tag_t
 static int
-_avl_height(struct tag_t* root) {
-    int lh, rh;
-    if (root == NULL) {
-        return 0;
-    }
-    if (root->left == NULL)
-        lh = 0;
-    else
-        lh = 1 + root->left->ht;
-    if (root->right == NULL)
-        rh = 0;
-    else
-        rh = 1 + root->right->ht;
-
-    if (lh > rh)
-        return (lh);
-    return (rh);
+_tag_compare_function(void *left, void *right) {
+    tag_t *l = left;
+    tag_t *r = right;
+    return strcmp(l->name, r->name);
 }
-
-
-// rotates to the left
-static struct tag_t *
-_avl_rotate_left(struct tag_t* root) {
-    struct tag_t* right_child = root->right;
-    root->right = right_child->left;
-    right_child->left = root;
-
-    // update the heights of the tag_ts
-    root->ht = _avl_height(root);
-    right_child->ht = _avl_height(right_child);
-    // return the new tag_t after rotation
-    return right_child;
-}
-
-// rotates to the right
-static struct tag_t *
-_avl_rotate_right(struct tag_t* root) {
-    struct tag_t* left_child = root->left;
-    root->left = left_child->right;
-    left_child->right = root;
-
-    // update the heights of the tag_ts
-    root->ht = _avl_height(root);
-    left_child->ht = _avl_height(left_child);
-
-    // return the new tag_t after rotation
-    return left_child;
-}
-
-// calculates the balance factor of a tag_t
-static int
-_avl_balance_factor(struct tag_t *root) {
-    int lh, rh;
-    if (root == NULL)
-        return 0;
-    if (root->left == NULL)
-        lh = 0;
-    else
-        lh = 1 + root->left->ht;
-    if (root->right == NULL)
-        rh = 0;
-    else
-        rh = 1 + root->right->ht;
-    return lh - rh;
-}
-
-
-// inserts a new tag_t in the AVL tree
-static struct tag_t *
-_avl_insert(struct tag_t* root, tag_t *new_tag) {
-    if (root == NULL) {
-        root = new_tag;
-    } else if (strcmp(new_tag->name, root->name) > 0) {
-        // insert the new tag_t to the right
-        root->right = _avl_insert(root->right, new_tag);
-        // tree is unbalanced, then rotate it
-        if (_avl_balance_factor(root) == -2) {
-            if (strcmp(new_tag->name, root->right->name) > 0) {
-                root = _avl_rotate_left(root);
-            } else {
-                root->right = _avl_rotate_right(root->right);
-                root = _avl_rotate_left(root);
-            }
-        }
-    } else {
-        // insert the new tag_t to the left
-        root->left = _avl_insert(root->left, new_tag);
-        // tree is unbalanced, then rotate it
-        if (_avl_balance_factor(root) == 2) {
-            if (strcmp(new_tag->name, root->left->name) < 0) {
-                root = _avl_rotate_right(root);
-            } else {
-                root->left = _avl_rotate_left(root->left);
-                root = _avl_rotate_right(root);
-            }
-        }
-    }
-    // update the heights of the tag_ts
-    root->ht = _avl_height(root);
-    return root;
-}
-
-// deletes a tag_t from the AVL tree
-static struct tag_t *
-_avl_delete(struct tag_t *root, char *x) {
-    struct tag_t * temp = NULL;
-    if (root == NULL){
-        return NULL;
-    }
-
-    if (strcmp(x, root->name) > 0) {
-        root->right = _avl_delete(root->right, x);
-        if(_avl_balance_factor(root) == 2) {
-            if(_avl_balance_factor(root->left) >= 0) {
-                root = _avl_rotate_right(root);
-            } else {
-                root->left = _avl_rotate_left(root->left);
-                root = _avl_rotate_right(root);
-            }
-        }
-    } else if(strcmp(x, root->name) < 0) {
-        root->left = _avl_delete(root->left, x);
-        if(_avl_balance_factor(root) == -2) {
-            if (_avl_balance_factor(root->right) <= 0) {
-                root = _avl_rotate_left(root);
-            } else {
-                root->right = _avl_rotate_right(root->right);
-                root = _avl_rotate_left(root);
-            }
-        }
-    } else {
-        if(root->right != NULL) {
-            temp = root->right;
-            while (temp->left != NULL)
-                temp = temp->left;
-
-            //root = temp;
-            DF("root %s temp %s", root->name, temp->name);
-            //root->name = temp->name;
-            root->right = _avl_delete(root->right, temp->name);
-            if(_avl_balance_factor(root) == 2) {
-                if (_avl_balance_factor(root->left) >= 0) {
-                    root = _avl_rotate_right(root);
-                } else {
-                    root->left = _avl_rotate_left(root->left);
-                    root = _avl_rotate_right(root);
-                }
-            }
-        } else {
-            return (root->left);
-        }
-    }
-    root->ht = _avl_height(root);
-    return (root);
-}
-
-// search a tag_t in the AVL tree
-static struct tag_t *
-_avl_search(struct tag_t* root, char *key) {
-    while(root != NULL) {
-        if(strcmp(root->name, key) == 0) {
-            return root;
-        }
-        if(strcmp(key, root->name) > 0) {
-            root = root->right;
-        } else {
-            root = root->left;
-        }
-    }
-    return NULL;
-}
-
-
-// inorder traversal of the tree
-static void
-_avl_inorder(struct tag_t* root, void (*f)(tag_t *, void *), void *udata) {
-    if (root == NULL) {
-        return;
-    }
-
-    _avl_inorder(root->left, f, udata);
-    f(root, udata);
-    _avl_inorder(root->right, f, udata);
-}
-
 
 tag_db_t *
 new_tagbase(void) {
     tag_db_t *db = malloc(sizeof(tag_db_t));
-    db->root = NULL;
+    db->tree = avl_new_tree(_tag_compare_function);
     db->datatypes = malloc(sizeof(cdt_t) * DATATYPE_SIZE);
     if(db->datatypes == NULL) {
         //logFatal(log_TAGBASE, "Unable to allocate array for datatypes");
@@ -382,7 +201,9 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     }
 
     /* Check for an existing tagname in the database */
-    tag = _avl_search(db->root, name);
+    tag_t search_tag;
+    search_tag.name = name;
+    tag = avl_search(db->tree, &search_tag);
     if(tag != NULL ) {
         /* If the tag is identical or bigger then just return the handle */
         if(tag->type == type && tag->count >= count) {
@@ -444,11 +265,11 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     }
     new_tag->nextevent = 1;
     new_tag->nextmap = 1;
-    //new_tag->events = NULL;
+    new_tag->events = NULL;
     new_tag->omask = NULL;
     new_tag->odata = NULL;
 
-    db->root = _avl_insert(db->root, new_tag);
+    avl_insert_node(db->tree, new_tag);
     DF("Added tag %s", new_tag->name);
     return new_tag;
 
@@ -597,7 +418,7 @@ const char *tag_get_name(tag_t *tag) {
 int
 tag_delete(tag_db_t *db, tag_t *tag) {
     event_del_check(tag); /* Check to see if we have a deleted event for this tag */
-    db->root = _avl_delete(db->root, tag->name);
+    avl_delete_node(db->tree, tag);
     // if(IS_CUSTOM(_db[idx].type)) {
     //     cdt_dec_refcount(_db[idx].type);
     // }
@@ -633,7 +454,6 @@ tag_delete(tag_db_t *db, tag_t *tag) {
     // tag->data = NULL;
     // tag->attr = 0;
     // free(tag);
-    DF("Tag to delete = %s, %d", tag->name, tag->count);
 
     //_tagcount--;
     // if(_db[INDEX_TAGCOUNT].data != NULL) {
@@ -644,19 +464,20 @@ tag_delete(tag_db_t *db, tag_t *tag) {
 }
 
 
-
 /* Finds a tag based on it's name.  Basically just a wrapper for _get_by_name().
  * Fills in the structure 'tag' and returns zero on success */
 tag_t *
 tag_get_by_name(tag_db_t *db, char *name) {
-    return _avl_search(db->root, name);
+    tag_t search_tag;
+    search_tag.name = name;
+    return avl_search(db->tree, &search_tag);
 }
 
 /* Iterator for listing tags.  The function f will be called for each tag
    with the tag and the udata */
 void
 tag_list(tag_db_t *db, void (*f)(tag_t *, void *), void *udata) {
-    _avl_inorder(db->root, f, udata);
+    avl_inorder(db->tree, (void (*)(void *, void *))f, udata);
 }
 
 

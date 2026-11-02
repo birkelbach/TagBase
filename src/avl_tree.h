@@ -16,11 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-typedef struct tree_t tree_t;
-typedef struct node_t node_t;
+typedef struct tree_t avl_tree_t;
 
-tree_t *avl_new_tree(int (*f)(void *left, void *right));
-int avl_insert_node(tree_t *tree, void *data);
-void avl_delete_node(tree_t *tree, void *data);
-void *avl_search(tree_t *tree, void *key);
-void avl_inorder(tree_t *tree, void (*f)(void *, void *), void *udata);
+avl_tree_t *avl_new_tree(int (*f)(void *left, void *right));
+void avl_del_tree(avl_tree_t *tree);
+int avl_insert_node(avl_tree_t *tree, void *data);
+void avl_delete_node(avl_tree_t *tree, void *data);
+void *avl_search(avl_tree_t *tree, void *key);
+void avl_inorder(avl_tree_t *tree, void (*f)(void *, void *), void *udata);
