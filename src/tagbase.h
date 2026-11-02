@@ -155,23 +155,23 @@ typedef struct tag_group_id tag_group_id;
 typedef struct tag_handle_t tag_handle_t;
 
 /* Easy way to store base datatypes.  Doesn't include BOOL */
-// typedef union tag_type_union {
-//     type_byte   type_byte;
-//     type_sint   type_sint;
-//     type_char   type_char;
-//     type_word   type_word;
-//     type_int    type_int;
-//     type_uint   type_uint;
-//     type_dword  type_dword;
-//     type_dint   type_dint;
-//     type_udint  type_udint;
-//     type_time   type_time;
-//     type_lword  type_lword;
-//     type_lint   type_lint;
-//     type_ulint  type_ulint;
-//     type_real   type_real;
-//     type_lreal  type_lreal;
-// } tag_type_union;
+typedef union tag_type_union {
+    type_byte   type_byte;
+    type_sint   type_sint;
+    type_char   type_char;
+    type_word   type_word;
+    type_int    type_int;
+    type_uint   type_uint;
+    type_dword  type_dword;
+    type_dint   type_dint;
+    type_udint  type_udint;
+    type_time   type_time;
+    type_lword  type_lword;
+    type_lint   type_lint;
+    type_ulint  type_ulint;
+    type_real   type_real;
+    type_lreal  type_lreal;
+} tag_type_union;
 
 /* Data type definitions */
 #define TYPE_BOOL    0x0010
@@ -248,7 +248,7 @@ tag_t *tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t
 //int tag_clr_attribute(tag_index index, uint32_t attr);
 
 tag_t * tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, int *err);
-// int tag_del(tag_index idx);
+int tag_delete(tag_db_t *db, tag_t *tag);
 tag_t *tag_get_by_name(tag_db_t *db, char *name);
 tag_handle_t *tag_gethandle(tag_db_t *db, char *str, int count, int *err);
 void tag_list(tag_db_t *db, void (*f)(tag_t *, void *), void *udata);
@@ -261,13 +261,13 @@ int tag_get_size(tag_db_t *db, tag_t *tag);
 // int validate_tagname(char *name);
 //
 // /* Database reading and writing functions */
-int tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
-int tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
-int tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size);
 int tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data);
 int tag_write_handle(tag_db_t *db, tag_handle_t *h, void *data);
 int tag_mask_write_handle(tag_db_t *db, tag_handle_t *h, void *data, void *mask);
-//
+int tag_read(tag_db_t *db, char *name, int count, void *data);
+int tag_write(tag_db_t *db, char *name, int count, void *data);
+int tag_mask_write(tag_db_t *db, char *name, int count, void *data, void *mask);
+
 // /* Perform an atomic operation on the data */
 // int atomic_op(tag_handle_t h, void *data, uint16_t op);
 
@@ -279,16 +279,14 @@ const char *type_get_name(tag_db_t *db, tag_type type);
 // int cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata));
 int type_size(tag_db_t *db, tag_type type);
 int serialize_datatype(tag_db_t *db, tag_type type, char **str);
-//
-// /* The event stuff is defined in events.c */
-// void event_check(tag_index idx, int offset, int size);
-// void event_del_check(tag_index idx);
-// int event_add(tag_handle_t h, int event_type, void *data, event_function f, void *udata);
-// int event_del(int index, int id);
-// int events_del_all(event_t *head);
-// int event_opt(int index, int id, uint32_t options);
-// void *event_get_userdata(int index, int id, int *res);
-//
+
+/* The event functions */
+int event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata);
+int event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata);
+int event_del(tag_t *, int id);
+int event_opt(tag_t *, int id, uint32_t options);
+void *event_get_userdata(tag_t *, int id, int *res);
+
 // int map_add(tag_handle_t src, tag_handle_t dest);
 // int map_del(tag_index index, int id);
 // int map_get(tag_handle_t *src, tag_handle_t *dest, tag_index index, int id);

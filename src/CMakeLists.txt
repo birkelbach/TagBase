@@ -6,9 +6,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)     # Static librari
 
 add_library(tagbase tagbase.c
                     tagtype.c
-                    tagvirtual.c
-                    tagutility.c
-                    tagrw.c
+                    virtual.c
+                    utility.c
+                    readwrite.c
+                    events.c
             )
 
 target_link_libraries(tagbase pthread)

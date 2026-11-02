@@ -204,9 +204,9 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
     return 0;
 }
 
-/* Actually finds the handle.  We don't allocate the handle or the string here
-   since tag manipulation functions in this file may need to regenerate their
-   handles if the sentinel is violated */
+/* Actually finds the handle.  We don't allocate the handle or copy the
+   tag name into the handle in this function so that it can be used
+   internally without that overhead. */
 static int
 _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
     int result, index, size;
@@ -281,7 +281,6 @@ _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
             }
         }
     }
-    h->sentinel = db->sentinel;
     return 0;
 }
 
@@ -291,7 +290,8 @@ _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
  * represented by 'str'.  The handle is a complete representation of where
  * the data is located in the server.  It is passed to the reading/writing
  * functions to retrieve the data. If count is 0 then a handle to the whole tag
- * or tag member is returned.
+ * or tag member is returned.  This function returns a pinter to a handle that
+ * is allocted and needs to be freed using the tag_freehandle() function.
  *
  * @param db Pointer to the tag database
  * @param str The string that represents the tag or tag fragment that we wish
@@ -343,15 +343,11 @@ tag_freehandle(tag_handle_t *h) {
  * @returns Zero on success or error code otherwise
  */
 int
-tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data)
-{
+tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data) {
     uint8_t temp[h->size+1];
     int result;
     int i;
 
-    if(h->sentinel < db->sentinel) { /* Some tag somewhere has been deleted */
-        return ERR_EXPIRED;  // Do this for now.  Ultimately we'll get another handle
-    }
     /* This takes care of the case of the bit being offset */
     if(h->type == TYPE_BOOL && h->bit > 0) {
         if(h->bit > 7) return ERR_ARG;
@@ -372,6 +368,7 @@ tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data)
     return result;
 }
 
+
 /*!
  * Higher level tag writing function.  This function uses
  * a tag handle to write the data.  The data that is passed
@@ -389,10 +386,6 @@ tag_write_handle(tag_db_t *db, tag_handle_t *h, void *data) {
     uint8_t *temp;
     uint8_t *mask;
     int i;
-
-    if(h->sentinel < db->sentinel) { /* Some tag somewhere has been deleted */
-        return ERR_EXPIRED;  // Do this for now.  Ultimately we'll get another handle
-    }
 
     if(tag_is_readonly(h->ptr)) return ERR_READONLY;
     if(h->type == TYPE_BOOL && h->bit > 0) {
@@ -420,6 +413,7 @@ tag_write_handle(tag_db_t *db, tag_handle_t *h, void *data) {
     return result;
 }
 
+
 /*!
  * Higher level tag masked write function.  This function uses
  * a tag handle to write the data.  The data that is passed
@@ -439,10 +433,6 @@ tag_mask_write_handle(tag_db_t *db, tag_handle_t *h, void *data, void *mask) {
     uint8_t *temp;
     uint8_t *masktemp;
     int i;
-
-    if(h->sentinel < db->sentinel) { /* Some tag somewhere has been deleted */
-        return ERR_EXPIRED;  // Do this for now.  Ultimately we'll get another handle
-    }
 
     if(tag_is_readonly(h->ptr)) return ERR_READONLY;
     if(h->type == TYPE_BOOL && (h->bit > 0 || h->count % 8 )) {
@@ -471,4 +461,46 @@ tag_mask_write_handle(tag_db_t *db, tag_handle_t *h, void *data, void *mask) {
 }
 
 
-// TODO Write functions
+int
+tag_read(tag_db_t *db, char *name, int count, void *data) {
+    tag_handle_t h;
+    int result;
+    result = _tag_handle(db, &h, name, strlen(name), count);
+    if(result) return result;
+
+    return tag_read_handle(db, &h, data);
+}
+
+
+int
+tag_write(tag_db_t *db, char *name, int count, void *data) {
+    tag_handle_t h;
+    int result;
+    result = _tag_handle(db, &h, name, strlen(name), count);
+    if(result) return result;
+
+    return tag_write_handle(db, &h, data);
+}
+
+
+int
+tag_mask_write(tag_db_t *db, char *name, int count, void *data, void *mask) {
+    tag_handle_t h;
+    int result;
+    result = _tag_handle(db, &h, name, strlen(name), count);
+    if(result) return result;
+
+    return tag_mask_write_handle(db, &h, data, mask);
+}
+
+
+/* This is here so we can use _tag_handle */
+int
+event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata) {
+    tag_handle_t h;
+    int result;
+    result = _tag_handle(db, &h, name, strlen(name), count);
+    if(result) return result;
+
+    return event_add_handle(db, &h, event_type, data, f, udata);
+}

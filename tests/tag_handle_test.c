@@ -6,7 +6,6 @@ called function tests these and if the PASS/FAIL test doesn't match then an erro
 and this test fails.  The CDT creation and tag addition functions should all pass.  If they
 fail then the error is allowed to raise to the caller and the test fail.
 
-TODO: Need to test the handle that is returned when tags are added
 */
 
 #include <tagbase.h>

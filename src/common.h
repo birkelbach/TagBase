@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/time.h>
 
 
@@ -33,6 +34,22 @@
 
 /* Initial size of the custom data types array in each data base*/
 #define DATATYPE_SIZE 8
+
+/*!
+ * This structure is used to define a specific tag or a part of the tag for
+ * reading and writing.
+ */
+struct  tag_handle_t {
+    tag_t *ptr;            /*!< Pointer to the Tag */
+    char *str;             /*!< This string is the string that created the handle*/
+    uint32_t count;        /*!< The number of items represented by the handle */
+    uint32_t byte;         /*!< The byte offset where the data block starts */
+    unsigned char bit;     /*!< The bit offset */
+    uint32_t size;         /*!< The total size of the data block in bytes */
+    tag_type type;         /*!< The data type of the block */
+};
+
+
 
 /* This is the compound datatype member definition.  The
  * members are represented as a linked list */
@@ -52,6 +69,32 @@ typedef struct cdt_t {
     cdt_member *members;
 } cdt_t;
 
+typedef struct event_t {
+    int id;                 /* Unique identifier for this event definition */
+    bool inhibit;           /* Used to inhibit the event while the event is running */
+
+    int byte;               /* The byte offset where the data block starts */
+    unsigned char bit;      /* The bit offset */
+    int count;              /* The number of items represented by the handle */
+    uint32_t size;          /* The total size of the data block in bytes */
+    uint32_t options;       /* Options for the event */
+    tag_type datatype;      /* The data type of the block */
+    int eventtype;          /* The type of event */
+    void *data;             /* Data given by module */
+    void *test;             /* Internal data, depends on event type */
+    event_function notify;  /* Callback function for this event */
+    void *userdata;         /* user data that is associated with the callback function */
+    struct event_t *next;
+} event_t;
+
+typedef struct datamap_t {
+    int id;
+    tag_handle_t source;
+    tag_handle_t dest;
+    uint8_t *mask;
+    struct datamap_t *next;
+} datamap_t;
+
 
 /* This is the internal structure for an individual tag. */
 struct tag_t {
@@ -62,8 +105,8 @@ struct tag_t {
     char *name;
     int nextevent;             /* Counter for keeping track of event IDs */
     int nextmap;               /* Counter for keeping track of map IDs */
-    // event_t *events;           /* Linked list of events */
-    // datamap_t *mappings;       /* Linked list of mappings */
+    event_t *events;           /* Linked list of events */
+    datamap_t *mappings;       /* Linked list of mappings */
     uint8_t *data;
     uint8_t *omask;            /* Override mask pointer */
     uint8_t *odata;            /* Override data pointer */
@@ -86,34 +129,30 @@ struct tag_db_t {
     tag_t *root;
 };
 
-/*!
- * This structure is used to define a specific tag or a part of the tag for
- * reading and writing.
- */
-struct  tag_handle_t {
-    tag_t *ptr;            /*!< Pointer to the Tag */
-    char *str;             /*!< This string is the string that created the handle*/
-    uint32_t count;        /*!< The number of items represented by the handle */
-    uint32_t byte;         /*!< The byte offset where the data block starts */
-    unsigned char bit;     /*!< The bit offset */
-    uint32_t size;         /*!< The total size of the data block in bytes */
-    tag_type type;         /*!< The data type of the block */
-    unsigned int sentinel; /*!< Used to detect when tags have been deleted */
-};
 
 
-/* General Tag functions */
+/* tagtype.c */
 int validate_tagname(char *name);
 void cdt_inc_refcount(tag_db_t *db, tag_type type);
 void cdt_dec_refcount(tag_db_t *db, tag_type type);
+
+/* tagbase.c */
+int tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
+int tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
+int tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size);
+
+/* events.c*/
+void event_check(tag_db_t *db, tag_t *tag, int offset, int size);
+void event_del_check(tag_t *tag);
+int events_del_all(event_t *head);
+
 
 /* queue handling functions */
 int write_queue(tag_t *tag, int offset, void *data, int size, void *userdata);
 int read_queue(tag_t *tag, int offset, void *data, int size, void *userdata);
 
-/* Utility Functions */
+/* utility.c */
 time_t get_time(void);
-
 
 /* Tag groups are an array of handles in each module */
 // typedef struct tag_group_t {
@@ -126,31 +165,7 @@ time_t get_time(void);
 // /* These are the compound datatype definitions. */
 
 
-// typedef struct event_t {
-//     int id;                 /* Unique identifier for this event definition */
-//     bool inhibit;           /* Used to inhibit the event while the event is running */
 
-//     int byte;               /* The byte offset where the data block starts */
-//     unsigned char bit;      /* The bit offset */
-//     int count;              /* The number of items represented by the handle */
-//     uint32_t size;          /* The total size of the data block in bytes */
-//     uint32_t options;       /* Options for the event */
-//     tag_type datatype;      /* The data type of the block */
-//     int eventtype;          /* The type of event */
-//     void *data;             /* Data given by module */
-//     void *test;             /* Internal data, depends on event type */
-//     event_function notify;  /* Callback function for this event */
-//     void *userdata;         /* user data that is associated with the callback function */
-//     struct event_t *next;
-// } event_t;
-
-// typedef struct datamap_t {
-//     int id;
-//     tag_handle_t source;
-//     tag_handle_t dest;
-//     uint8_t *mask;
-//     struct datamap_t *next;
-// } datamap_t;
 
 
 // /* Internal structure for the tag index array */

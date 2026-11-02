@@ -1,6 +1,7 @@
 /* Header file for our tests */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <tagbase.h>
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)

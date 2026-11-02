@@ -63,6 +63,7 @@ _avl_height(struct tag_t* root) {
     return (rh);
 }
 
+
 // rotates to the left
 static struct tag_t *
 _avl_rotate_left(struct tag_t* root) {
@@ -155,8 +156,8 @@ _avl_delete(struct tag_t *root, char *x) {
 
     if (strcmp(x, root->name) > 0) {
         root->right = _avl_delete(root->right, x);
-        if (_avl_balance_factor(root) == 2) {
-            if (_avl_balance_factor(root->left) >= 0) {
+        if(_avl_balance_factor(root) == 2) {
+            if(_avl_balance_factor(root->left) >= 0) {
                 root = _avl_rotate_right(root);
             } else {
                 root->left = _avl_rotate_left(root->left);
@@ -165,7 +166,7 @@ _avl_delete(struct tag_t *root, char *x) {
         }
     } else if(strcmp(x, root->name) < 0) {
         root->left = _avl_delete(root->left, x);
-        if (_avl_balance_factor(root) == -2) {
+        if(_avl_balance_factor(root) == -2) {
             if (_avl_balance_factor(root->right) <= 0) {
                 root = _avl_rotate_left(root);
             } else {
@@ -174,14 +175,16 @@ _avl_delete(struct tag_t *root, char *x) {
             }
         }
     } else {
-        if (root->right != NULL) {
+        if(root->right != NULL) {
             temp = root->right;
             while (temp->left != NULL)
                 temp = temp->left;
 
-            root->data = temp->data;
+            //root = temp;
+            DF("root %s temp %s", root->name, temp->name);
+            //root->name = temp->name;
             root->right = _avl_delete(root->right, temp->name);
-            if (_avl_balance_factor(root) == 2) {
+            if(_avl_balance_factor(root) == 2) {
                 if (_avl_balance_factor(root->left) >= 0) {
                     root = _avl_rotate_right(root);
                 } else {
@@ -350,10 +353,8 @@ _queue_add(tag_db_t *db, tag_t *tag, tag_type type, unsigned int count) {
  * of the newly created tag or an error. */
 tag_t *
 tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, int *err) {
-    int n;
     void *newdata;
     unsigned int size;
-    uint8_t tag_desc[48];
     tag_t *tag;
 
     if(count == 0) {
@@ -455,10 +456,6 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     // if(IS_CUSTOM(type)) {
     //     cdt_inc_refcount(type);
     // }
-    // if(_db[INDEX_LASTINDEX].data != NULL) {
-    //     tag_write_raw(INDEX_LASTINDEX, 0, &_tagnextindex, sizeof(tag_index));
-    // }
-    // _tagnextindex++;
     // _tagcount++;
     // if(_db[INDEX_TAGCOUNT].data != NULL) {
     //     tag_write_raw(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
@@ -588,63 +585,63 @@ const char *tag_get_name(tag_t *tag) {
 // }
 
 
-// /* Deletes the tag given my index.  The tags position in the _db array is not
-//  * moved.  The name and data fields are freed and set to NULL.  The events
-//  * and the mappings are also freed and removed.  The item in the index is also
-//  * removed.  After a tag is deleted the index will always be smaller than the
-//  * database.  We cannot remove the items from the database and reuse them
-//  * because some modules may have stored an index to that tag and may try to
-//  * access it in the future.  If the tag is now different then bad things could
-//  * happen.
-//  */
-// int
-// tag_del(tag_index idx)
-// {
-//     uint8_t tag_desc[48];
+/* Deletes the tag given my index.  The tags position in the _db array is not
+ * moved.  The name and data fields are freed and set to NULL.  The events
+ * and the mappings are also freed and removed.  The item in the index is also
+ * removed.  After a tag is deleted the index will always be smaller than the
+ * database.  We cannot remove the items from the database and reuse them
+ * because some modules may have stored an index to that tag and may try to
+ * access it in the future.  If the tag is now different then bad things could
+ * happen.
+ */
+int
+tag_delete(tag_db_t *db, tag_t *tag) {
+    event_del_check(tag); /* Check to see if we have a deleted event for this tag */
+    db->root = _avl_delete(db->root, tag->name);
+    // if(IS_CUSTOM(_db[idx].type)) {
+    //     cdt_dec_refcount(_db[idx].type);
+    // }
+    // if(_db[idx].attr & TAG_ATTR_RETAIN) {
+    //     ret_del_tag(idx);
+    // }
 
-//     if(idx >= _tagnextindex || idx < 0) {
-//         logError(log_TAGBASE, "tag_del() pass index out of range %d", idx);
-//         return ERR_ARG;
-//     }
-//     if(_db[idx].data == NULL) { /* We've already deleted this one */
-//         logError(log_TAGBASE, "tag_del() trying to delete already deleted tag %d", idx);
-//         return ERR_DELETED;
-//     }
-//     event_del_check(idx); /* Check to see if we have a deleted event for this tag */
-//     if(IS_CUSTOM(_db[idx].type)) {
-//         cdt_dec_refcount(_db[idx].type);
-//     }
-//     if(_db[idx].attr & TAG_ATTR_RETAIN) {
-//         ret_del_tag(idx);
-//     }
-//     events_del_all(_db[idx].events);
-//     _db[idx].events = NULL;
-//     map_del_all(_db[idx].mappings);
-//     _db[idx].mappings = NULL;
-//     _del_index(_db[idx].name);
-//     logDebug(log_TAGBASE, "Tag deleted with name = %s", _db[idx].name);
 
-//     /* Update the '_tag_deleted' system tag */
-//     memset(&tag_desc, 0, sizeof(tag_t));
-//     *((tag_index *)tag_desc) = idx;
-//     *((tag_type *)&tag_desc[4]) = _db[idx].type;
-//     *((type_udint *)&tag_desc[8]) = _db[idx].count;
-//     *((uint16_t *)&tag_desc[12]) = _db[idx].attr;
-//     strncpy((char *)&tag_desc[14], _db[idx].name, TAGNAME_SIZE + 1);
-//     tag_write_raw(INDEX_DELETED_TAG, 0, tag_desc, 47);
+    // events_del_all(tag->events);
+    // tag->events = NULL;
 
-//     free(_db[idx].name);
-//     free(_db[idx].data);
-//     _db[idx].name = NULL;
-//     _db[idx].data = NULL;
-//     _db[idx].attr = 0;
-//     _tagcount--;
-//     if(_db[INDEX_TAGCOUNT].data != NULL) {
-//         tag_write_raw(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
-//     }
+    // map_del_all(_db[idx].mappings);
+    // _db[idx].mappings = NULL;
+    // _del_index(_db[idx].name);
+    // logDebug(log_TAGBASE, "Tag deleted with name = %s", _db[idx].name);
 
-//     return 0;
-// }
+    /* Update the '_tag_deleted' system tag */
+    // memset(&tag_desc, 0, sizeof(tag_t));
+    // *((tag_index *)tag_desc) = idx;
+    // *((tag_type *)&tag_desc[4]) = _db[idx].type;
+    // *((type_udint *)&tag_desc[8]) = _db[idx].count;
+    // *((uint16_t *)&tag_desc[12]) = _db[idx].attr;
+    // strncpy((char *)&tag_desc[14], _db[idx].name, TAGNAME_SIZE + 1);
+    // tag_write_raw(INDEX_DELETED_TAG, 0, tag_desc, 47);
+
+    // if(tag->name != NULL) {
+    //     free(tag->name);
+    // }
+    // if(tag->data != NULL) {
+    //     free(tag->data);
+    // }
+    // tag->name = NULL;
+    // tag->data = NULL;
+    // tag->attr = 0;
+    // free(tag);
+    DF("Tag to delete = %s, %d", tag->name, tag->count);
+
+    //_tagcount--;
+    // if(_db[INDEX_TAGCOUNT].data != NULL) {
+    //     tag_write_raw(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
+    // }
+
+    return 0;
+}
 
 
 
@@ -685,7 +682,7 @@ tag_is_queue(tag_t *tag) {
 static int
 _tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
     virt_functions *vf;
-    int n, result;
+    int n;
     uint8_t x, y;
 
     /* determine if it's a virtual tag */
@@ -754,7 +751,6 @@ tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
 static int
 _tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
     virt_functions *vf;
-    int result;
 
     /* determine if it's a virtual tag */
     if(tag->attr & TAG_ATTR_VIRTUAL) {
@@ -815,7 +811,7 @@ tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
 static int
 _tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size) {
     uint8_t *dbi, *newdata, *newmask;
-    int n, result;
+    int n;
 
     /* We don't allow masked writes to virtual tags.  This would be
      * too ambiguous */
@@ -838,7 +834,7 @@ _tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask
     for(n = 0; n < size; n++) {
         dbi[n] = (newdata[n] & newmask[n]) | (dbi[n] & ~newmask[n]);
     }
-    //event_check(tag, offset, size);
+    event_check(db, tag, offset, size);
 
     // if(tag->attr & TAG_ATTR_RETAIN) {
     //     ret_tag_write(tag);
