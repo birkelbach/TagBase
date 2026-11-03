@@ -37,8 +37,7 @@
 
 
 int
-server_time(tag_t *tag, int offset, void *data, int size, void *userdata)
-{
+server_time(tag_t *tag, int offset, void *data, int size, void *userdata) {
     type_time t;
 
     t = get_time();

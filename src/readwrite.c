@@ -102,8 +102,7 @@ _parse_bit_index(tag_db_t *db, tag_type type, tag_handle_t *h, char *digit, int 
 }
 
 static int
-_parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, int count)
-{
+_parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, int count) {
     int index, result, size;
     char *name = str;
     char *nextname;

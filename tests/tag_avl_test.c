@@ -30,9 +30,9 @@ main(int argc, char *argv[]) {
     db = new_tagbase();
 
     char *taglist[] = {"Apples", "Blueberries", "Cherries",
-                      "Eggs", "Chocolate", "Waffles",
-                      "PanCakes", "Syrup", "Cherios",
-                      "Grits", NULL};
+                       "Eggs", "Chocolate", "Waffles",
+                       "PanCakes", "Syrup", "Cherios",
+                       "Grits", NULL};
 
     /* Add the tags */
     int n=0;

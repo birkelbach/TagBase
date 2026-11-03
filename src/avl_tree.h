@@ -19,6 +19,7 @@
 typedef struct tree_t avl_tree_t;
 
 avl_tree_t *avl_new_tree(int (*f)(void *left, void *right));
+void avl_set_free_function(struct tree_t *tree, void (*f)(void *node_data));
 void avl_del_tree(avl_tree_t *tree);
 int avl_insert_node(avl_tree_t *tree, void *data);
 void avl_delete_node(avl_tree_t *tree, void *data);

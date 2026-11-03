@@ -51,6 +51,14 @@ IN THE SOFTWARE.
   #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
 
+/* This is a bit of structure inception.  The way this works is this file
+   maintains an AVL tree ofthe following nodes.  The *data argument is a
+   pointer to a caller maintained piece of data.  The node_t structures
+   in the list will be allocated and free as nodes are inserted and
+   removed.  The data pointed to by the node will have to be removed
+   by the caller. */
+
+
 typedef struct node_t {
     void *data;
     struct node_t *left;
@@ -58,18 +66,20 @@ typedef struct node_t {
     int height;
 } node_t;
 
-
+// TODO Perhaps add a callback function that could be used to delete
+//      the user data when nodes are removed.
 struct tree_t {
     int (*compare_function)(void *left, void *right);
+    void (*free_function)(void *node_data);  // Couldn't get this to work.
     struct node_t *root;
 };
 
 // Calculate height
 static int
 _height(struct node_t *node) {
-  if (node == NULL)
-    return 0;
-  return node->height;
+    if (node == NULL)
+      return 0;
+    return node->height;
 }
 
 
@@ -178,32 +188,33 @@ _smallest_node(struct node_t *node) {
 static struct node_t *
 _delete_node(struct tree_t *tree, struct node_t *root, void *key) {
     // Find the node and delete it
-    if (root == NULL)
+    if (root == NULL) {
         return root;
+    }
 
-    if (tree->compare_function(key, root->data)<0)
+    if (tree->compare_function(key, root->data) < 0) {
         root->left = _delete_node(tree, root->left, key);
-
-    else if (tree->compare_function(key, root->data) > 0)
+    } else if (tree->compare_function(key, root->data) > 0) {
         root->right = _delete_node(tree, root->right, key);
+    } else {
+        if ((root->left == NULL) || (root->right == NULL)) {
+            struct node_t *temp = root->left ? root->left : root->right;
 
-    else {
-      if ((root->left == NULL) || (root->right == NULL)) {
-        struct node_t *temp = root->left ? root->left : root->right;
-
-        if (temp == NULL) {
-          temp = root;
-          root = NULL;
-        } else
-          *root = *temp;
-        free(temp);
-      } else {
-        struct node_t *temp = _smallest_node(root->right);
-
-        root->data = temp->data;
-
-        root->right = _delete_node(tree, root->right, temp->data);
-      }
+            if(temp == NULL) {
+                temp = root;
+                root = NULL;
+            } else {
+                *root = *temp;
+            }
+            free(temp);
+        } else {
+            struct node_t *temp = _smallest_node(root->right);
+            root->data = temp->data;
+            root->right = _delete_node(tree, root->right, temp->data);
+        }
+        // if(tree->free_function != NULL) {
+        //     tree->free_function(root->data);
+        // }
     }
 
     if (root == NULL) {
@@ -236,7 +247,6 @@ _delete_node(struct tree_t *tree, struct node_t *root, void *key) {
     return root;
 }
 
-
 static void
 _inorder(node_t *root, void (*f)(void *, void *), void *udata) {
     if (root != NULL) {
@@ -255,12 +265,19 @@ struct tree_t *
 avl_new_tree(int (*f)(void *left, void *right)) {
     struct tree_t *new_tree = malloc(sizeof(struct tree_t));
     new_tree->compare_function = f;
+    new_tree->free_function = NULL;
     new_tree->root = NULL;
     return new_tree;
 }
 
 void
+avl_set_free_function(struct tree_t *tree, void (*f)(void *node_data)) {
+    tree->free_function = f;
+}
+
+void
 avl_del_tree(struct tree_t *tree) {
+    /* TODO traverse the tree and delete all the nodes. */
     if(tree != NULL) free(tree);
 }
 

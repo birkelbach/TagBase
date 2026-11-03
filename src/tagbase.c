@@ -41,7 +41,7 @@
 // static tag_index _ovrdset = 0;        /* Overrides that are set */
 // static tag_index _dbsize = 0;         /* Size of the database and the index */
 
-
+/* Uesd for the AVL tree to order and find tags */
 static int
 _tag_compare_function(void *left, void *right) {
     tag_t *l = left;
@@ -49,10 +49,17 @@ _tag_compare_function(void *left, void *right) {
     return strcmp(l->name, r->name);
 }
 
+static void
+_tag_free_function(void *data) {
+    tag_t *tag = data;
+    DF("Deleting %s", tag->name);
+}
+
 tag_db_t *
 new_tagbase(void) {
     tag_db_t *db = malloc(sizeof(tag_db_t));
     db->tree = avl_new_tree(_tag_compare_function);
+    avl_set_free_function(db->tree,_tag_free_function);
     db->datatypes = malloc(sizeof(cdt_t) * DATATYPE_SIZE);
     if(db->datatypes == NULL) {
         //logFatal(log_TAGBASE, "Unable to allocate array for datatypes");
@@ -596,7 +603,7 @@ _tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
         // }
         /* Copy the data into the right place. */
         memcpy(&(tag->data[offset]), data, size);
-        //event_check(tag, offset, size);
+        event_check(db, tag, offset, size);
     }
     // if(tag->attr & TAG_ATTR_RETAIN) {
     //     ret_tag_write(tag);
