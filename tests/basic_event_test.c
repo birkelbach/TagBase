@@ -19,9 +19,11 @@ main(int argc, char *argv[]) {
 
     db = new_tagbase();
     xassert(tag_add(db, "test_int", TYPE_INT, 16, 0x0000, NULL) != NULL);
-    result = event_add(db, "test_int[0]", 1, EVENT_CHANGE, NULL, _event_function, NULL);
+    result = tag_event_add(db, "test_int[0]", 1, EVENT_CHANGE, NULL, _event_function, NULL);
+    xassert(result > 0);
     buff = 16;
     result = tag_write(db, "test_int[0]", 1, &buff);
+    xassert(result == 0);
     xassert(test == 1);
 
     exit(0);

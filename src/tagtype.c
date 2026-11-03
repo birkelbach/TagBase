@@ -62,7 +62,7 @@ cdt_append(tag_db_t *db, cdt_t *cdt, char *str)
     }
 
     /* Check that the type is valid */
-    if( (type = type_get_type(db, typestr)) == 0 ) {
+    if( (type = tag_get_type(db, typestr)) == 0 ) {
         return ERR_ARG;
     }
 
@@ -115,7 +115,7 @@ cdt_append(tag_db_t *db, cdt_t *cdt, char *str)
  * will be placed there otherwise zero will assigned to error. This
  * function uses strtok_r so the passed string can't be constant. */
 tag_type
-cdt_create(tag_db_t *db, char *str, int *error) {
+tag_cdt_create(tag_db_t *db, char *str, int *error) {
     int result;
     char *name, *member, *last, *tmp, *serial;
     cdt_t cdt;
@@ -139,7 +139,7 @@ cdt_create(tag_db_t *db, char *str, int *error) {
         free(tmp);
         return 0;
     }
-    if((type = type_get_type(db, name))) {
+    if((type = tag_get_type(db, name))) {
         serialize_datatype(db, type, &serial);
         if(strcmp(serial, str)) { /* This means the two CDT's are not equal */
             if(error != NULL) *error = ERR_DUPLICATE;
@@ -215,7 +215,7 @@ cdt_dec_refcount(tag_db_t *db, tag_type type) {
 /* Returns the type of the datatype with given name
  * If the datatype isn't found it returns 0 */
 tag_type
-type_get_type(tag_db_t *db, char *name) {
+tag_get_type(tag_db_t *db, char *name) {
     int n;
 
     if(name == NULL) return 0;
@@ -263,7 +263,7 @@ type_get_type(tag_db_t *db, char *name) {
 /* Returns a pointer to the name of the datatype given
  * by 'type'.  Returns NULL on failure */
 const char *
-type_get_name(tag_db_t *db, tag_type type)
+tag_get_typename(tag_db_t *db, tag_type type)
 {
     int index;
 
@@ -515,7 +515,7 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
 
     while(this != NULL) {
         size += strlen(this->name);
-        size += strlen(type_get_name(db, this->type));
+        size += strlen(tag_get_typename(db, this->type));
         snprintf(test, TAGNAME_SIZE + 1, "%d", this->count);
         size += strlen(test);
         size += 3; /* This is for the ':' and the two commas */
@@ -534,7 +534,7 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
         strncat(*str, ":", size - 1);
         strncat(*str, this->name, size - 1);
         strncat(*str, ",", size);
-        strncat(*str, type_get_name(db, this->type), size - 1);
+        strncat(*str, tag_get_typename(db, this->type), size - 1);
         strncat(*str, ",", size - 1);
         snprintf(test, TAGNAME_SIZE + 1, "%d", this->count);
         strncat(*str, test, size - 1);
@@ -547,14 +547,14 @@ serialize_datatype(tag_db_t *db, tag_type type, char **str)
 /* Figures out how large the datatype is and returns
  * that size in bytes.  This function is recursive */
 int
-type_size(tag_db_t *db, tag_type type)
+tag_type_size(tag_db_t *db, tag_type type)
 {
     int size = 0;
     int result;
     unsigned int pos = 0; /* Bit position within the data area */
     cdt_member *this;
 
-    if( type_get_name(db, type) == NULL ) {
+    if( tag_get_typename(db, type) == NULL ) {
         return ERR_NOTFOUND;
     }
 
@@ -572,7 +572,7 @@ type_size(tag_db_t *db, tag_type type)
                     pos++;
                 }
                 if(IS_CUSTOM(this->type)) {
-                    result = type_size(db, this->type);
+                    result = tag_type_size(db, this->type);
                     pos += (result * this->count) * 8;
                 } else {
                     /* This gets the size in bits */

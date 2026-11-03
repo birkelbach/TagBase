@@ -32,15 +32,6 @@
  * databases.
  */
 
-// tag_t *_db;                        /* Main tag database */
-// static tag_index_t *_index;           /* Tag database index */
-// static tag_index _indexcount = 0;     /* Number of tags in the index */
-// static tag_index _tagnextindex = 0;   /* The next index in the database */
-// static tag_index _tagcount = 0;
-// static tag_index _ovrdinstalled = 0;  /* Installled overrides */
-// static tag_index _ovrdset = 0;        /* Overrides that are set */
-// static tag_index _dbsize = 0;         /* Size of the database and the index */
-
 /* Uesd for the AVL tree to order and find tags */
 static int
 _tag_compare_function(void *left, void *right) {
@@ -57,6 +48,9 @@ _tag_free_function(void *data) {
 
 tag_db_t *
 new_tagbase(void) {
+    int result;
+    tag_t *tag;
+
     tag_db_t *db = malloc(sizeof(tag_db_t));
     db->tree = avl_new_tree(_tag_compare_function);
     avl_set_free_function(db->tree,_tag_free_function);
@@ -68,7 +62,19 @@ new_tagbase(void) {
     }
     db->datatype_size = DATATYPE_SIZE;
     db->datatype_index = 0;
-    db->sentinel = 0;
+    db->ovrdinstalled = 0;
+    db->ovrdset = 0;
+    db->tagcount = 0;
+    //db->sentinel = 0;
+
+    tag = tag_add_virtual(db, "_system_time", TYPE_TIME, 1, system_time, NULL, NULL, &result);
+    tag = tag_add_virtual(db, "_tagcount", TYPE_UDINT, 1, get_udint, NULL, &db->tagcount, &result);
+    tag = tag_add_virtual(db, "_overrides_installed", TYPE_UDINT, 1, get_udint, NULL, &db->ovrdinstalled, &result);
+    tag = tag_add_virtual(db, "_overrides_set", TYPE_UDINT, 1, get_udint, NULL, &db->ovrdset, &result);
+    if(tag == NULL) {
+        DF("ERRORRERRRR  %d", result);
+        // TODO do some error stuff...
+    }
     return db;
 }
 
@@ -113,7 +119,7 @@ tag_get_size(tag_db_t *db, tag_t *tag)
     if(tag->type == TYPE_BOOL)
         return (tag->count-1) / 8 + 1;
     else
-        return type_size(db, tag->type)  * tag->count;
+        return tag_type_size(db, tag->type)  * tag->count;
 }
 
 static inline void
@@ -142,7 +148,7 @@ _queue_add(tag_db_t *db, tag_t *tag, tag_type type, unsigned int count) {
     if(q == NULL) {
         return ERR_ALLOC;
     }
-    size = type_size(db, type) * count;
+    size = tag_type_size(db, type) * count;
     q->size = size;
     q->count = count;
     q->type = type;
@@ -189,7 +195,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
         return NULL;
     }
 
-    if(type_get_name(db, type) == NULL) {
+    if(tag_get_typename(db, type) == NULL) {
         //logDebug(log_TAGBASE, "tag_add() passed an unknown datatype %x", type);
         if(err != NULL) *err = ERR_ARG; /* is the datatype valid */
         return NULL;
@@ -204,7 +210,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
     if(type == TYPE_BOOL) {
         size = (count-1) / 8 + 1;
     } else {
-        size = type_size(db, type) * count;
+        size = tag_type_size(db, type) * count;
     }
 
     /* Check for an existing tagname in the database */
@@ -271,20 +277,21 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
         }
     }
     new_tag->nextevent = 1;
-    new_tag->nextmap = 1;
     new_tag->events = NULL;
     new_tag->omask = NULL;
     new_tag->odata = NULL;
 
     avl_insert_node(db->tree, new_tag);
-    DF("Added tag %s", new_tag->name);
-    return new_tag;
 
     /* Only if everything works will we increment the count */
-    // if(IS_CUSTOM(type)) {
-    //     cdt_inc_refcount(type);
-    // }
-    // _tagcount++;
+    if(IS_CUSTOM(type)) {
+        cdt_inc_refcount(db, type);
+    }
+    db->tagcount++;
+
+
+    DF("Added tag %s", new_tag->name);
+    return new_tag;
     // if(_db[INDEX_TAGCOUNT].data != NULL) {
     //     tag_write_raw(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     // }
@@ -309,7 +316,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
  * wf == NULL then the tag will be read only and writes will return an error.
  */
 tag_t *
-tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, int *err) {
+tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, void *udata, int *err) {
     tag_t *tag;
     virt_functions vf;
 
@@ -319,6 +326,7 @@ tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfu
     free(tag->data);
     vf.rf = rf;
     vf.wf = wf;
+    vf.userdata = udata;
     tag->data = malloc(sizeof(virt_functions));
     if(tag->data == NULL) {
         if(err != NULL) *err = ERR_ALLOC;
@@ -400,17 +408,17 @@ const char *tag_get_name(tag_t *tag) {
 
 
 
-// int
-// tag_set_attribute(tag_index index, uint32_t attr) {
-//     _db[index].attr |= attr;
-//     return 0;
-// }
+int
+tag_set_attribute(tag_t *tag, uint32_t attr) {
+    tag->attr |= attr;
+    return 0;
+}
 
-// int
-// tag_clr_attribute(tag_index index, uint32_t attr) {
-//     _db[index].attr &= ~attr;
-//     return 0;
-// }
+int
+tag_clr_attribute(tag_t *tag, uint32_t attr) {
+    tag->attr &= ~attr;
+    return 0;
+}
 
 
 /* Deletes the tag given my index.  The tags position in the _db array is not
@@ -426,16 +434,16 @@ int
 tag_delete(tag_db_t *db, tag_t *tag) {
     event_del_check(tag); /* Check to see if we have a deleted event for this tag */
     avl_delete_node(db->tree, tag);
-    // if(IS_CUSTOM(_db[idx].type)) {
-    //     cdt_dec_refcount(_db[idx].type);
-    // }
+    if(IS_CUSTOM(tag->type)) {
+        cdt_dec_refcount(db, tag->type);
+    }
     // if(_db[idx].attr & TAG_ATTR_RETAIN) {
     //     ret_del_tag(idx);
     // }
 
 
-    // events_del_all(tag->events);
-    // tag->events = NULL;
+    events_del_all(tag->events);
+    tag->events = NULL;
 
     // map_del_all(_db[idx].mappings);
     // _db[idx].mappings = NULL;
@@ -451,18 +459,18 @@ tag_delete(tag_db_t *db, tag_t *tag) {
     // strncpy((char *)&tag_desc[14], _db[idx].name, TAGNAME_SIZE + 1);
     // tag_write_raw(INDEX_DELETED_TAG, 0, tag_desc, 47);
 
-    // if(tag->name != NULL) {
-    //     free(tag->name);
-    // }
-    // if(tag->data != NULL) {
-    //     free(tag->data);
-    // }
-    // tag->name = NULL;
-    // tag->data = NULL;
-    // tag->attr = 0;
-    // free(tag);
+    if(tag->name != NULL) {
+        free(tag->name);
+    }
+    if(tag->data != NULL) {
+        free(tag->data);
+    }
+    tag->name = NULL;
+    tag->data = NULL;
+    tag->attr = 0;
+    free(tag);
 
-    //_tagcount--;
+    db->tagcount--;
     // if(_db[INDEX_TAGCOUNT].data != NULL) {
     //     tag_write_raw(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     // }
@@ -504,6 +512,12 @@ tag_is_virtual(tag_t *tag) {
 int
 tag_is_queue(tag_t *tag) {
     return IS_QUEUE(tag->type);
+}
+
+/* Returns true if tag at the given index is owned */
+int
+tag_is_owned(tag_t *tag) {
+    return (tag->attr & TAG_ATTR_OWNED );
 }
 
 
@@ -603,7 +617,7 @@ _tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size) {
         // }
         /* Copy the data into the right place. */
         memcpy(&(tag->data[offset]), data, size);
-        event_check(db, tag, offset, size);
+        event_check(tag, offset, size);
     }
     // if(tag->attr & TAG_ATTR_RETAIN) {
     //     ret_tag_write(tag);
@@ -662,7 +676,7 @@ _tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask
     for(n = 0; n < size; n++) {
         dbi[n] = (newdata[n] & newmask[n]) | (dbi[n] & ~newmask[n]);
     }
-    event_check(db, tag, offset, size);
+    event_check(tag, offset, size);
 
     // if(tag->attr & TAG_ATTR_RETAIN) {
     //     ret_tag_write(tag);
@@ -695,4 +709,23 @@ tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask,
     pthread_mutex_unlock(&tag->lock);
 
     return result;
+}
+
+
+int
+tag_lock(tag_t *tag) {
+    int result;
+
+    result = pthread_mutex_lock(&tag->lock);
+    if(result) return ERR_FAIL;
+    return ERR_OK;
+}
+
+int
+tag_unlock(tag_t *tag) {
+    int result;
+
+    result = pthread_mutex_unlock(&tag->lock);
+    if(result) return ERR_FAIL;
+    return ERR_OK;
 }

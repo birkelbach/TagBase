@@ -29,6 +29,10 @@ set(test_list basic_test
               tag_handle_test
               basic_read_write_test
               basic_event_test
+              event_bool_test
+              event_compare_test
+              event_deadband_test
+              ovrd_basic_test
    )
 
 foreach(test IN LISTS test_list)

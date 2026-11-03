@@ -222,17 +222,7 @@ typedef union tag_type_union {
 #define CDT_TO_INDEX(TYPE) (TYPE & ~TYPE_CUSTOM)
 #define CDT_TO_TYPE(INDEX) (INDEX | TYPE_CUSTOM)
 
-/* database indexes for status tags. */
-// #define INDEX_TAGCOUNT       0
-// #define INDEX_LASTINDEX      1
-// #define INDEX_ADDED_TAG      2
-// #define INDEX_DELETED_TAG    3
-// #define INDEX_DBSIZE         4
-// #define INDEX_STARTED        5
-// #define INDEX_OVRD_INSTALLED 6
-// #define INDEX_OVRD_SET   DF
-
-#define CDT_FLAGS_RETAINED 0x80;
+// #define CDT_FLAGS_RETAINED 0x80;
 
 typedef void (*event_function)(void *);
 /* type definition of the virtual tag function prototype */
@@ -244,10 +234,10 @@ tag_db_t *new_tagbase(void);
 void delete_tagbase(tag_db_t *db);
 
 tag_t *tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, int *err);
-//int tag_set_attribute(tag_index index, uint32_t attr);
-//int tag_clr_attribute(tag_index index, uint32_t attr);
+int tag_set_attribute(tag_t *tag, uint32_t attr);
+int tag_clr_attribute(tag_t *tag, uint32_t attr);
 
-tag_t * tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, int *err);
+tag_t *tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, void *udata, int *err);
 int tag_delete(tag_db_t *db, tag_t *tag);
 tag_t *tag_get_by_name(tag_db_t *db, char *name);
 tag_handle_t *tag_gethandle(tag_db_t *db, char *str, int count, int *err);
@@ -256,56 +246,40 @@ const char *tag_get_name(tag_t *tag);
 int tag_is_readonly(tag_t *tag);
 int tag_is_virtual(tag_t *tag);
 int tag_is_queue(tag_t *tag);
-//int is_tag_owned(int fd, tag_index idx);
+int tag_is_owned(tag_t *tag);
 int tag_get_size(tag_db_t *db, tag_t *tag);
-// int validate_tagname(char *name);
-//
-// /* Database reading and writing functions */
+
+/* Database reading and writing functions */
 int tag_read_handle(tag_db_t *db, tag_handle_t *h, void *data);
 int tag_write_handle(tag_db_t *db, tag_handle_t *h, void *data);
 int tag_mask_write_handle(tag_db_t *db, tag_handle_t *h, void *data, void *mask);
 int tag_read(tag_db_t *db, char *name, int count, void *data);
 int tag_write(tag_db_t *db, char *name, int count, void *data);
 int tag_mask_write(tag_db_t *db, char *name, int count, void *data, void *mask);
+int tag_lock(tag_t *tag);
+int tag_unlock(tag_t *tag);
 
-// /* Perform an atomic operation on the data */
-// int atomic_op(tag_handle_t h, void *data, uint16_t op);
-
-// /* Custom DataType functions */
-tag_type cdt_create(tag_db_t *db, char *str, int *error);
-tag_type type_get_type(tag_db_t *db, char *name);
-const char *type_get_name(tag_db_t *db, tag_type type);
+/* Custom DataType functions */
+tag_type tag_cdt_create(tag_db_t *db, char *str, int *error);
+tag_type tag_get_type(tag_db_t *db, char *name);
+const char *tag_get_typename(tag_db_t *db, tag_type type);
 // cdt_t *cdt_get_entry(tag_type type);
 // int cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata));
-int type_size(tag_db_t *db, tag_type type);
+int tag_type_size(tag_db_t *db, tag_type type);
 int serialize_datatype(tag_db_t *db, tag_type type, char **str);
 
 /* The event functions */
-int event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata);
-int event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata);
-int event_del(tag_t *, int id);
-int event_opt(tag_t *, int id, uint32_t options);
-void *event_get_userdata(tag_t *, int id, int *res);
+int tag_event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata);
+int tag_event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata);
+int tag_event_del(tag_t *, int id);
+int tag_event_opt(tag_t *, int id, uint32_t options);
+void *tag_event_get_userdata(tag_t *, int id, int *res);
 
-// int map_add(tag_handle_t src, tag_handle_t dest);
-// int map_del(tag_index index, int id);
-// int map_get(tag_handle_t *src, tag_handle_t *dest, tag_index index, int id);
-// int map_del_all(datamap_t *head);
-// int map_check(tag_index idx, int offset, int size);
-//
-// int override_add(tag_index idx, int offset, void *data, void *mask, int size);
-// int override_del(tag_index idx, int offset, void *mask, int size);
-// int override_get(tag_index idx, int offset, int size, void *data, void *mask);
-// int override_set(tag_index idx, uint8_t flag);
-//
-// /* retrieve the current time on the server */
-// int server_time(tag_index idx, int offset, void *data, int size, void *userdata);
-//
-// /* Special tag hook functions */
-// int special_tag_read(tag_index index, int offset, void *data, int size);
-// int special_tag_write(tag_index index, int offset, void *data, int size);
-// int special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int size);
-//
+int override_add(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size);
+int override_del(tag_db_t *db, tag_t *tag, int offset, void *mask, int size);
+int override_get(tag_db_t *db, tag_t *tag, int offset, int size, void *data, void *mask);
+int override_set(tag_db_t *db, tag_t *tag, uint8_t flag);
+
 // /* Tag retention functions */
 // #define RET_FLAG_DELETED 0x01
 //

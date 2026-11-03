@@ -33,11 +33,12 @@
  */
 
 #include <common.h>
+#include <stdint.h>
 #include <tagbase.h>
 
 
 int
-server_time(tag_t *tag, int offset, void *data, int size, void *userdata) {
+system_time(tag_t *tag, int offset, void *data, int size, void *userdata) {
     type_time t;
 
     t = get_time();
@@ -45,6 +46,18 @@ server_time(tag_t *tag, int offset, void *data, int size, void *userdata) {
     return 0;
 }
 
+/* This is a virtual tag function that is used to simply read a 32 bit
+   unsigned integer.  The userdata pointer should be the pointer to
+   the data that is to be returned.  This is mostly used for exposing
+   system counters to the tag base. */
+int
+get_udint(tag_t *tag, int offset, void *data, int size, void *userdata) {
+    type_udint *in = userdata; /* Just to make things easier */
+    type_udint *out = data;
+
+    *out = *in;
+    return 0;
+}
 
 /* These functions deal with tag based queues */
 int
@@ -79,7 +92,7 @@ write_queue(tag_t *tag, int offset, void *data, int size, void *userdata) {
     memcpy(q->queue[next], data, q->size);
     q->qcount++;
     /* This will break if we have any event other than "WRITE" */
-    //event_check(idx, offset, size);
+    event_check(tag, offset, size);
 
     return 0;
 }
@@ -101,29 +114,4 @@ read_queue(tag_t *tag, int offset, void *data, int size, void *userdata) {
     return 0;
 }
 
-/* Special tag handling functions.  The idea behind "special" tags is that
-   they have a hook that is called right before the actual data is read
-   or written.  This hook can interrupt the process by returning an error,
-   call other functions and even manipulate the data before it moves on. */
-
-/* It is important to know that the tags mutex is held while these functions
-   are executing */
-
-// int
-// special_tag_read(tag_index index, int offset, void *data, int size) {
-//     /* So far reading is always successful */
-//     return 0;
-// }
-
-// int
-// special_tag_write(tag_index index, int offset, void *data, int size) {
-//     /* So far writing is always successful */
-//     return 0;
-// }
-
-// int
-// special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int size) {
-//     /* So far writing is always successful */
-//     return 0;
-// }
 

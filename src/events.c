@@ -359,7 +359,7 @@ _event_hit(event_t *event, tag_t *tag, int offset, int size) {
  * the range so that this function would not have to run through all of the
  * events.  For now we keep it simple. */
 void
-event_check(tag_db_t *db, tag_t *tag, int offset, int size) {
+event_check(tag_t *tag, int offset, int size) {
     event_t *this;
 
     this = tag->events;
@@ -462,11 +462,11 @@ _set_event_data(tag_db_t *db, event_t *event, tag_t *tag, void *data) {
             if(event->datatype == TYPE_BOOL) {
                 testsize = (event->count + event->bit - 1)/8 + 1;
             } else {
-                testsize = type_size(db, event->datatype) * event->count;
+                testsize = tag_type_size(db, event->datatype) * event->count;
             }
             break;
         case EVENT_DEADBAND:
-            size = type_size(db, event->datatype);
+            size = tag_type_size(db, event->datatype);
             datasize = size;
             testsize = size * event->count;
             break;
@@ -478,7 +478,7 @@ _set_event_data(tag_db_t *db, event_t *event, tag_t *tag, void *data) {
         case EVENT_EQUAL:
         case EVENT_GREATER:
         case EVENT_LESS:
-            datasize = type_size(db, event->datatype);
+            datasize = tag_type_size(db, event->datatype);
             testsize = (event->count - 1)/8 + 1;
             break;
     }
@@ -536,7 +536,7 @@ _set_event_data(tag_db_t *db, event_t *event, tag_t *tag, void *data) {
  * common.h for #defines.  'data' is any data that may need to be
  * passed such as values for deadband.  Returns the id of the event */
 int
-event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata) {
+tag_event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata) {
     event_t *head, *new;
     int result;
 
@@ -635,7 +635,7 @@ _find_event(event_t **event, tag_t *tag, int id) {
 }
 
 int
-event_del(tag_t *tag, int id) {
+tag_event_del(tag_t *tag, int id) {
     event_t *this, *last;
     int result = ERR_NOTFOUND;
 
@@ -681,7 +681,7 @@ events_del_all(event_t *head) {
 }
 
 int
-event_opt(tag_t *tag, int id, uint32_t options) {
+tag_event_opt(tag_t *tag, int id, uint32_t options) {
     event_t *event;
     int result;
 
@@ -700,7 +700,7 @@ event_opt(tag_t *tag, int id, uint32_t options) {
    It is possible that the userdata itself is NULL and this can
    be used to differentiate errors from null userdata */
 void *
-event_get_userdata(tag_t *tag, int id, int *res) {
+tag_event_get_userdata(tag_t *tag, int id, int *res) {
     event_t *event;
     int result;
 

@@ -50,7 +50,6 @@ struct  tag_handle_t {
 };
 
 
-
 /* This is the compound datatype member definition.  The
  * members are represented as a linked list */
 typedef struct cdt_member {
@@ -60,6 +59,7 @@ typedef struct cdt_member {
     struct cdt_member *next;
 } cdt_member;
 
+
 /* This is the structure that represents the container for each
  * datatype. */
 typedef struct cdt_t {
@@ -68,6 +68,7 @@ typedef struct cdt_t {
     unsigned int refcount; /* Number of tags of this type */
     cdt_member *members;
 } cdt_t;
+
 
 typedef struct event_t {
     int id;                 /* Unique identifier for this event definition */
@@ -87,14 +88,6 @@ typedef struct event_t {
     struct event_t *next;
 } event_t;
 
-typedef struct datamap_t {
-    int id;
-    tag_handle_t source;
-    tag_handle_t dest;
-    uint8_t *mask;
-    struct datamap_t *next;
-} datamap_t;
-
 
 /* This is the internal structure for an individual tag. */
 struct tag_t {
@@ -104,9 +97,7 @@ struct tag_t {
     pthread_mutex_t lock;
     char *name;
     int nextevent;             /* Counter for keeping track of event IDs */
-    int nextmap;               /* Counter for keeping track of map IDs */
     event_t *events;           /* Linked list of events */
-    datamap_t *mappings;       /* Linked list of mappings */
     uint8_t *data;
     uint8_t *omask;            /* Override mask pointer */
     uint8_t *odata;            /* Override data pointer */
@@ -123,9 +114,12 @@ struct tag_db_t {
     cdt_t *datatypes;
     unsigned int datatype_size;
     unsigned int datatype_index;  /* Next datatype index */
+    uint32_t ovrdinstalled;
+    uint32_t ovrdset;
+    uint32_t tagcount;
     /* sentinel is incremented when tags are deleted.  Handles will contain the sentinel
        and any handle with a sentinel less than this number will have to be recreated */
-    unsigned int sentinel;
+    //unsigned int sentinel;
     avl_tree_t *tree; /* Tag AVL Tree */
 };
 
@@ -141,7 +135,7 @@ int tag_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
 int tag_mask_write_raw(tag_db_t *db, tag_t *tag, int offset, void *data, void *mask, int size);
 
 /* events.c*/
-void event_check(tag_db_t *db, tag_t *tag, int offset, int size);
+void event_check(tag_t *tag, int offset, int size);
 void event_del_check(tag_t *tag);
 int events_del_all(event_t *head);
 
@@ -150,28 +144,13 @@ int events_del_all(event_t *head);
 int write_queue(tag_t *tag, int offset, void *data, int size, void *userdata);
 int read_queue(tag_t *tag, int offset, void *data, int size, void *userdata);
 
+
+/* virtual.c */
+int system_time(tag_t *tag, int offset, void *data, int size, void *userdata);
+int get_udint(tag_t *tag, int offset, void *data, int size, void *userdata);
+
 /* utility.c */
 time_t get_time(void);
-
-/* Tag groups are an array of handles in each module */
-// typedef struct tag_group_t {
-//     uint8_t flags;    /* option flags for the group */
-//     unsigned int size; /* amount of memory needed to transfer this group */
-//     uint8_t count;    /* number of members in this group */
-//     tag_handle_t *members;
-// } tag_group;
-
-// /* These are the compound datatype definitions. */
-
-
-
-
-
-// /* Internal structure for the tag index array */
-// typedef struct {
-//     char *name;
-//     int tag_idx;
-// } tag_index_t;
 
 /* This structure is used to hold the two virtual functions
  * that would define a virtual tag as well as the userdata for

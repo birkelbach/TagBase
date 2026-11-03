@@ -3,8 +3,28 @@ When a tag is re-added and everything is the same except the size grows we are n
 The opendax code had an idea of "special tags" that had read / write hooks.  Maybe we give all tags read / write hooks.
 We might also give them a delete hook to deal with outdated handles. ???
 
+Attributes are not being properly set in tag_add()
+
+Add some kind of callback function logging mechanism.  It might make sense to not compile debug level functions
+when not in debug mode.  We could let the user decide what gets compiled in.
+
+Test Tag reset size when duplicated
+
 Error string description function
 
 Do we want to add descriptions to tags??
 
+Own / Disown tag feature and test that owned tags cannot be deleted
+
+Test Queue
+
+Add Overrides
+
+system tags to add...
+  _system_time
+  _tag_count
+  _last_tag_added
+  _last_tag_deleted
+  _overrides_installed
+  _overrides_set
 

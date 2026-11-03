@@ -11,6 +11,7 @@ add_library(tagbase tagbase.c
                     utility.c
                     readwrite.c
                     events.c
+                    override.c
             )
 
 target_link_libraries(tagbase pthread)

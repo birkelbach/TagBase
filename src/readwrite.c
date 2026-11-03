@@ -85,7 +85,7 @@ _parse_bit_index(tag_db_t *db, tag_type type, tag_handle_t *h, char *digit, int 
     if(endptr[0] != '\0') {
         return ERR_ARG;
     }
-    size = type_size(db, type);
+    size = tag_type_size(db, type);
     if(h->bit > size*8) {
         return ERR_2BIG;
     }
@@ -117,7 +117,7 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
         return index;
     }
 
-    if(type_get_name(db, lasttype) == NULL) {
+    if(tag_get_typename(db, lasttype) == NULL) {
         return ERR_NOTFOUND; /* This is a serious problem here */
     }
 
@@ -136,7 +136,7 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
             } else {
                 /* Gotta step up one if the last member was a bool */
                 if(h->type == TYPE_BOOL && h->bit > 0) { h->byte++; }
-                h->byte += type_size(db, this->type) * this->count;
+                h->byte += tag_type_size(db, this->type) * this->count;
                 h->bit = 0;
             }
             h->type = this->type; /* We need to keep track of the last type */
@@ -161,7 +161,7 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
         if(index != ERR_NOTFOUND) {
             if(count == 0) count = 1;
             if((index + count) > this->count) return ERR_2BIG;
-            h->byte += type_size(db, this->type) * index;
+            h->byte += tag_type_size(db, this->type) * index;
         }
     } else { /* We are the last item */
         if(h->type == TYPE_BOOL && this->type != TYPE_BOOL && h->bit > 0) {
@@ -180,7 +180,7 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
                 h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
-                size = type_size(db, this->type);
+                size = tag_type_size(db, this->type);
                 h->size = size * count;
                 h->byte += size * index;
                 h->bit = 0;
@@ -193,7 +193,7 @@ _parse_next_member(tag_db_t *db, tag_type lasttype, tag_handle_t *h, char *str, 
                 h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
-                size = type_size(db, this->type);
+                size = tag_type_size(db, this->type);
                 h->bit = 0;
                 h->size = size * count;
                 h->count = count;
@@ -243,7 +243,7 @@ _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
         result = _parse_next_member(db, tag->type, h, membername, count);
         if(result) return result;
         if(index != ERR_NOTFOUND) {
-            h->byte += type_size(db, tag->type) * index;
+            h->byte += tag_type_size(db, tag->type) * index;
         }
     } else {
         h->type = tag->type;
@@ -257,7 +257,7 @@ _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
                 h->size = (count - 1) / 8 + 1;
                 h->count = count;
             } else {
-                size = type_size(db, tag->type);
+                size = tag_type_size(db, tag->type);
                 h->size = size * count;
                 h->byte = size * index;
                 h->bit = 0;
@@ -272,7 +272,7 @@ _tag_handle(tag_db_t *db, tag_handle_t *h, char *str, int strlen, int count) {
                 h->size = (count - 1) / 8 + 1;
                 h->count = count;
             } else {
-                size = type_size(db, tag->type);
+                size = tag_type_size(db, tag->type);
                 h->size = size * count;
                 h->byte = 0;
                 h->bit = 0;
@@ -495,11 +495,11 @@ tag_mask_write(tag_db_t *db, char *name, int count, void *data, void *mask) {
 
 /* This is here so we can use _tag_handle */
 int
-event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata) {
+tag_event_add(tag_db_t *db, char *name, int count, int event_type, void *data, event_function f, void *udata) {
     tag_handle_t h;
     int result;
     result = _tag_handle(db, &h, name, strlen(name), count);
     if(result) return result;
 
-    return event_add_handle(db, &h, event_type, data, f, udata);
+    return tag_event_add_handle(db, &h, event_type, data, f, udata);
 }

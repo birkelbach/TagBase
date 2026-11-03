@@ -47,19 +47,19 @@ main(int argc, char *argv[]) {
 
     tag_type test1, test2, test3, test4, test5;
 
-    test1 = cdt_create(db, "Test1:Int5,INT,5:Bool10,BOOL,10:Dint1,DINT,1:Dint3,DINT,3", NULL);
+    test1 = tag_cdt_create(db, "Test1:Int5,INT,5:Bool10,BOOL,10:Dint1,DINT,1:Dint3,DINT,3", NULL);
     xassert(test1 >= 0);
 
-    test2 = cdt_create(db, "Test2:Int3,INT,3:Test1,Test1,5", NULL);
+    test2 = tag_cdt_create(db, "Test2:Int3,INT,3:Test1,Test1,5", NULL);
     xassert(test2 >= 0);
 
-    test3 = cdt_create(db, "Test3:Int7,INT,7:Bool30,BOOL,30:Bool32,BOOL,32:Test1,Test1,1:Test2,Test2,2", NULL);
+    test3 = tag_cdt_create(db, "Test3:Int7,INT,7:Bool30,BOOL,30:Bool32,BOOL,32:Test1,Test1,1:Test2,Test2,2", NULL);
     xassert(test3 >= 0);
 
-    test4 = cdt_create(db, "Test4:Int,INT,1:Bool,BOOL,1:reBool,BOOL,1:triBool,BOOL,1:Dint,DINT,1", NULL);
+    test4 = tag_cdt_create(db, "Test4:Int,INT,1:Bool,BOOL,1:reBool,BOOL,1:triBool,BOOL,1:Dint,DINT,1", NULL);
     xassert(test4 >= 0);
 
-    test5 = cdt_create(db, "Test5:Bool1,BOOL,10:Bool2,BOOL,1:Bool3,BOOL,3", NULL);
+    test5 = tag_cdt_create(db, "Test5:Bool1,BOOL,10:Bool2,BOOL,1:Bool3,BOOL,3", NULL);
     xassert(test5 >= 0);
 
     tag = tag_add(db,"HandleBool1", TYPE_BOOL, 1, 0x0000, &result);

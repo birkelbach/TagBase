@@ -1,7 +1,9 @@
 build/*
+doc/build/*
 *.swp
 *.kate-swp
 *.kdev4
+*.bak
 *.vscode/*
 
 # Prerequisites
