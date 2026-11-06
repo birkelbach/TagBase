@@ -48,7 +48,6 @@
 #define TAG_ATTR_OVR_SET    0x0008 /* Tag override is set */
 #define TAG_ATTR_SPECIAL    0x0010 /* Special tags have a read/write hook function */
 #define TAG_ATTR_OWNED      0x0020 /* Owned tags can not be deleted */
-#define TAG_ATTR_MAPPING    0x1000 /* Tag is the source of at least one map */
 #define TAG_ATTR_EVENT      0x2000 /* Tag has at least one event */
 #define TAG_ATTR_OVERRIDE   0x4000 /* Tag has override installed */
 
@@ -67,17 +66,6 @@
 
 /* Event Options */
 #define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */
-
-/* Atomic Operations */
-#define ATOMIC_OP_INC  0x0001  /* Increment */
-#define ATOMIC_OP_DEC  0x0002  /* Decrement */
-#define ATOMIC_OP_NOT  0x0003  /* Compliment */
-#define ATOMIC_OP_OR   0x0004  /* Bitwise OR */
-#define ATOMIC_OP_AND  0x0005  /* Bitwise AND */
-#define ATOMIC_OP_NOR  0x0006  /* Bitwise NOR */
-#define ATOMIC_OP_NAND 0x0007  /* Bitwise NAND */
-#define ATOMIC_OP_XOR  0x0008  /* Bitwise XOR */
-#define ATOMIC_OP_XNOR 0x0009  /* Bitwise XNOR */
 
 /* Defines the maximum length of a tagname */
 #ifndef TAGNAME_SIZE
@@ -154,6 +142,19 @@ typedef struct tag_group_id tag_group_id;
 /*! Opaque pointer for tag handle */
 typedef struct tag_handle_t tag_handle_t;
 
+/*! Opaque pointer to a custom data type */
+typedef struct cdt_t cdt_t;
+
+/*! Custom Datatype Iterator */
+typedef struct cdt_iter {
+    const char *name;
+    tag_type type;
+    int count;
+    int byte;
+    int bit;
+} cdt_iter_t;
+
+
 /* Easy way to store base datatypes.  Doesn't include BOOL */
 typedef union tag_type_union {
     type_byte   type_byte;
@@ -228,7 +229,6 @@ typedef void (*event_function)(void *);
 /* type definition of the virtual tag function prototype */
 typedef int vfunction(tag_t *tag, int offset, void *data, int size, void *userdata);
 
-
 /* Tag Database Handling Functions */
 tag_db_t *new_tagbase(void);
 void delete_tagbase(tag_db_t *db);
@@ -237,7 +237,7 @@ tag_t *tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t
 int tag_set_attribute(tag_t *tag, uint32_t attr);
 int tag_clr_attribute(tag_t *tag, uint32_t attr);
 
-tag_t *tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, void *udata, int *err);
+tag_t *tag_add_virtual(tag_db_t *db, char *name, tag_type type, uint32_t count, vfunction *rf, vfunction *wf, void *udata, int *err);
 int tag_delete(tag_db_t *db, tag_t *tag);
 tag_t *tag_get_by_name(tag_db_t *db, char *name);
 tag_handle_t *tag_gethandle(tag_db_t *db, char *str, int count, int *err);
@@ -261,12 +261,16 @@ int tag_unlock(tag_t *tag);
 
 /* Custom DataType functions */
 tag_type tag_cdt_create(tag_db_t *db, char *str, int *error);
+cdt_t *tag_cdt_new(char *name, int *err);
+int tag_cdt_add_member(tag_db_t *db, cdt_t *cdt, char *name, tag_type type, uint32_t count);
+int tag_cdt_finalize(tag_db_t *db, cdt_t *cdt);
+void tag_cdt_free(cdt_t *cdt);
+
 tag_type tag_get_type(tag_db_t *db, char *name);
 const char *tag_get_typename(tag_db_t *db, tag_type type);
 // cdt_t *cdt_get_entry(tag_type type);
-// int cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata));
+int tag_cdt_iter(tag_db_t *db, tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata));
 int tag_type_size(tag_db_t *db, tag_type type);
-int serialize_datatype(tag_db_t *db, tag_type type, char **str);
 
 /* The event functions */
 int tag_event_add_handle(tag_db_t *db, tag_handle_t *h, int event_type, void *data, event_function f, void *udata);

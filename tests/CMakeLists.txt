@@ -33,6 +33,8 @@ set(test_list basic_test
               event_compare_test
               event_deadband_test
               ovrd_basic_test
+              cdt_size_test
+              cdt_iter_test
    )
 
 foreach(test IN LISTS test_list)

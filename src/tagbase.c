@@ -316,7 +316,7 @@ tag_add(tag_db_t *db, char *name, tag_type type, uint32_t count, uint32_t attr, 
  * wf == NULL then the tag will be read only and writes will return an error.
  */
 tag_t *
-tag_add_virtual(tag_db_t *db, char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf, void *udata, int *err) {
+tag_add_virtual(tag_db_t *db, char *name, tag_type type, uint32_t count, vfunction *rf, vfunction *wf, void *udata, int *err) {
     tag_t *tag;
     virt_functions vf;
 

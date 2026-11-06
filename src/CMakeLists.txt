@@ -20,3 +20,4 @@ target_link_libraries(tagbase pthread)
 configure_file(config.h.in config.h)
 
 install(TARGETS tagbase DESTINATION lib)
+install(FILES tagbase.h DESTINATION include)

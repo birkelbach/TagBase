@@ -7,7 +7,6 @@
    we are building features, before we build more formal
    tests.
 */
-
 void print_tag(tag_t *tag, void *udata) {
     printf("tag %s\n", tag_get_name(tag));
 }
@@ -25,9 +24,11 @@ main(int argc, char *argv[]) {
     tag_list(db, print_tag, NULL);
 
     result = tag_read(db, "_system_time", 0, &time);
+    xassert(result == 0);
     TP("time = %ld", time);
 
     result = tag_read(db, "_tagcount", 0, &check);
+    xassert(result == 0);
     TP("tag count = %d", check);
 
     exit(0);

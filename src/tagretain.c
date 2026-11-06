@@ -26,8 +26,6 @@
   #include <sqlite3.h>
 #endif
 
-extern tag_db_t *_db;
-
 #ifdef HAVE_SQLITE
 static sqlite3 *_sql;
 static sqlite3_stmt *update_stmt;

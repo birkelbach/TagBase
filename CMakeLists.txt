@@ -24,6 +24,14 @@ if( NOT HAVE_PTHREAD )
     message(FATAL_ERROR "Pthread Library is required and not installed")
 endif()
 
+# SQLite is used in the historical logging module as one of the plugin types
+include(FindSQLite3)
+if(NOT SQLite3_FOUND)
+  message(STATUS "SQLite Libraries not found")
+else()
+  add_compile_definitions(HAVE_SQLITE)
+endif()
+
 
 find_program(HAVE_ASCIIDOC_PDF NAMES asciidoctor-pdf)
 find_program(HAVE_ASCIIDOC NAMES asciidoctor)

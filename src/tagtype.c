@@ -315,178 +315,219 @@ tag_get_typename(tag_db_t *db, tag_type type)
     }
 }
 
-// /* Returns a pointer to the CDT given by 'type' */
-// cdt_t *
-// cdt_get_entry(tag_type type) {
-//     int index;
 
-//     index = CDT_TO_INDEX(type);
-//     if(IS_CUSTOM(type) && index > 0 && index < _datatype_size) {
-//         return &_datatypes[index];
-//     } else {
-//         return NULL;
-//     }
-// }
+cdt_t *
+tag_cdt_new(char *name, int *err) {
+    cdt_t *cdt;
 
+    cdt  = malloc(sizeof(cdt_t));
+    if(cdt == NULL) {
+        if(err != NULL) *err = ERR_ALLOC;
+        return NULL;
+    }
+    cdt->flags = 0;
+    cdt->members = NULL;
+    cdt->refcount = 0;
+    cdt->name = strdup(name);
+    if(cdt->name == NULL) {
+        free(cdt);
+        if(err != NULL) *err = ERR_ALLOC;
+        return NULL;
+    }
+    return cdt;
+}
 
 /* Adds a member to the datatype referenced by it's array index 'cdt_index'.
  * Returns 0 on success, nonzero error code on failure. */
-// int
-// cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
-// {
-//     int retval;
-//     cdt_member *this, *new;
+int
+tag_cdt_add_member(tag_db_t *db, cdt_t *cdt, char *name, tag_type type, uint32_t count) {
+    int retval;
+    cdt_member *this, *new;
 
-//     /* Check that the name is okay */
-//     if( (retval = _validate_name(name)) ) {
-//         return retval;
-//     }
-//     /* Check that the type is valid */
-//     if( _checktype(type) ) {
-//         logError(LOG_TAGBASE, "cdt_add_member() - datatype 0x%X does not exist");
-//         return ERR_ARG;
-//     }
+    /* Check that the name is okay */
+    if( (retval = validate_tagname(name)) ) {
+        return retval;
+    }
+    /* Check that the type is valid */
+    if( tag_get_typename(db, type) == NULL) {
+        //logError(LOG_TAGBASE, "cdt_add_member() - datatype 0x%X does not exist");
+        return ERR_ARG;
+    }
 
-//     /* Check for duplicates */
-//     this = cdt->members;
-//     while(this != NULL) {
-//         if( !strcasecmp(name, this->name) ) {
-//             logError(LOG_TAGBASE, "cdt_add_member() - name %s already exists", name);
-//             return ERR_DUPLICATE;
-//         }
-//         this = this->next;
-//     }
+    /* Check for duplicates */
+    this = cdt->members;
+    while(this != NULL) {
+        if( !strcasecmp(name, this->name) ) {
+            //logError(LOG_TAGBASE, "cdt_add_member() - name %s already exists", name);
+            return ERR_DUPLICATE;
+        }
+        this = this->next;
+    }
 
-//     /* Allocate the new member */
-//     new = malloc(sizeof(cdt_member));
-//     if(new == NULL) {
-//         logError(LOG_TAGBASE, "cdt_add_member() - Unable to allocate memory for new datatype member %s", name);
-//         return ERR_ALLOC;
-//     }
-//     /* Assign everything to the new datatype member */
-//     new->name = strdup(name);
-//     if(new->name == NULL) {
-//         free(new);
-//         logError(LOG_TAGBASE, "cdt_add_member() - Unable to allocate memory for member name %s", name);
-//         return ERR_ALLOC;
-//     }
-//     new->type = type;
-//     new->count = count;
-//     new->next = NULL;
+    /* Allocate the new member */
+    new = malloc(sizeof(cdt_member));
+    if(new == NULL) {
+        //logError(LOG_TAGBASE, "cdt_add_member() - Unable to allocate memory for new datatype member %s", name);
+        return ERR_ALLOC;
+    }
+    /* Assign everything to the new datatype member */
+    new->name = strdup(name);
+    if(new->name == NULL) {
+        free(new);
+        //logError(LOG_TAGBASE, "cdt_add_member() - Unable to allocate memory for member name %s", name);
+        return ERR_ALLOC;
+    }
+    new->type = type;
+    new->count = count;
+    new->next = NULL;
 
-//     /* Find the end of the linked list and put it there */
-//     if(cdt->members == NULL) {
-//         cdt->members = new;
-//     } else {
-//         this = cdt->members;
+    /* Find the end of the linked list and put it there */
+    if(cdt->members == NULL) {
+        cdt->members = new;
+    } else {
+        this = cdt->members;
 
-//         while(this->next != NULL) {
-//             this = this->next;
-//         }
-//         this->next = new;
-//     }
+        while(this->next != NULL) {
+            this = this->next;
+        }
+        this->next = new;
+    }
+    return 0;
+}
 
-//     return 0;
-// }
+int
+tag_cdt_finalize(tag_db_t *db, cdt_t *cdt) {
+    cdt_t *new_datatype;
+
+    /* Do we have space in the array */
+    if(db->datatype_index == db->datatype_size) {
+        /* Allocate more space for the array */
+        new_datatype = realloc(db->datatypes, (db->datatype_size + DATATYPE_SIZE) * sizeof(cdt_t));
+
+        if(new_datatype != NULL) {
+            db->datatypes = new_datatype;
+            db->datatype_size += DATATYPE_SIZE;
+        } else {
+            return ERR_ALLOC;
+        }
+    }
+
+    /* Add the datatype */
+    db->datatypes[db->datatype_index].name = cdt->name;
+    db->datatypes[db->datatype_index].members = cdt->members;
+    db->datatypes[db->datatype_index].refcount = 0;
+    db->datatypes[db->datatype_index].flags = 0;
+    db->datatype_index++;
+    free(cdt);
+    return ERR_OK;
+}
+
+/* If creating the cdt fails from the user's side this
+   function can be used to free what's left of the cdt */
+void
+tag_cdt_free(cdt_t *cdt) {
+    _cdt_destroy(cdt);
+}
+
+
 
 /* Retrieves a pointer to the datatype array element identified by type
  * returns NULL on failure and if the error pointer is not NULL the error
  * code will be placed there. */
-// static cdt_t *
-// get_cdt_pointer(tag_type type, int *error)
-// {
-//     int index;
+static cdt_t *
+get_cdt_pointer(tag_db_t *db, tag_type type, int *error)
+{
+    int index;
 
-//     if(error != NULL) *error = 0;
-//     if(IS_CUSTOM(type)) {
-//         index = CDT_TO_INDEX(type);
-//         if(index < _datatype_size && _datatypes[index].name != NULL) {
-//             return &_datatypes[index];
-//         } else {
-//             *error = ERR_ARG;
-//             return NULL;
-//         }
-//     } else {
-//         *error = ERR_ARG;
-//         return NULL;
-//     }
-// }
+    if(error != NULL) *error = 0;
+    if(IS_CUSTOM(type)) {
+        index = CDT_TO_INDEX(type);
+        if(index < db->datatype_size && db->datatypes[index].name != NULL) {
+            return &db->datatypes[index];
+        } else {
+            *error = ERR_ARG;
+            return NULL;
+        }
+    } else {
+        *error = ERR_ARG;
+        return NULL;
+    }
+ }
 
 
-// /*!
-//  * This is the compound data type iterator.  If type is a CDT then this
-//  * function iterates over each member of the data type and calls 'callback'
-//  * with the cdt_iter structure and passes back the udata pointer as well.
-//  * If type is 0 then it iterates over the list of data types.  In this case
-//  * the name and type fields in cdt_iter are the only things that are relevant.
-//  *
-//  * @param type The data type that we wish to iterate over.  If set to zero
-//  *             This will iterate over the list of CDTs in the server
-//  * @param udata Pointer to user data that will be passed to the callback
-//  * @param callback Function that will be called for each member in the CDT
-//  * @returns Zero on success or an error code otherwise
-//  */
-// int
-// cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata))
-// {
-//     cdt_t *dt;
-//     cdt_member *this;
-//     cdt_iter_t iter;
-//     int result;
-//     int byte = 0;
-//     int bit = 0;
-//     int index = 0;
+/*!
+ * This is the compound data type iterator.  If type is a CDT then this
+ * function iterates over each member of the data type and calls 'callback'
+ * with the cdt_iter structure and passes back the udata pointer as well.
+ * If type is 0 then it iterates over the list of data types.  In this case
+ * the name and type fields in cdt_iter are the only things that are relevant.
+ *
+ * @param type The data type that we wish to iterate over.  If set to zero
+ *             This will iterate over the list of CDTs in the server
+ * @param udata Pointer to user data that will be passed to the callback
+ * @param callback Function that will be called for each member in the CDT
+ * @returns Zero on success or an error code otherwise
+ */
+int
+tag_cdt_iter(tag_db_t *db, tag_type type, void *udata, void (*callback)(cdt_iter_t member, void *udata)) {
+    cdt_t *dt;
+    cdt_member *this;
+    cdt_iter_t iter;
+    int result;
+    int byte = 0;
+    int bit = 0;
+    int index = 0;
 
-//     if(type == 0) { /* iterate through the custom types */
-//         dt = get_cdt_pointer(CDT_TO_TYPE(index), &result);
+    if(type == 0) { /* iterate through the custom types */
+        dt = get_cdt_pointer(db, CDT_TO_TYPE(index), &result);
 
-//         while(result == 0) {
-//             iter.name = dt->name;
-//             iter.type = CDT_TO_TYPE(index);
-//             iter.count = iter.byte = iter.bit = 0;
-//             callback(iter, udata);
+        while(result == 0) {
+            iter.name = dt->name;
+            iter.type = CDT_TO_TYPE(index);
+            iter.count = iter.byte = iter.bit = 0;
+            callback(iter, udata);
 
-//             index++;
-//             dt = get_cdt_pointer(CDT_TO_TYPE(index), &result);
-//         }
-//     } else { /* iterate over the members */
-//         dt = get_cdt_pointer(type, &result);
-//         if(dt == NULL) {
-//             return result;
-//         }
+            index++;
+            dt = get_cdt_pointer(db, CDT_TO_TYPE(index), &result);
+        }
+    } else { /* iterate over the members */
+        dt = get_cdt_pointer(db, type, &result);
+        if(dt == NULL) {
+            return result;
+        }
 
-//         this = dt->members;
-//         while(this != NULL) {
-//             iter.name = this->name;
-//             iter.type = this->type;
-//             iter.count = this->count;
-//             iter.bit = bit;
-//             iter.byte = byte;
-//             callback(iter, udata); /* Call the callback */
-//             /* No sense in calculating the offsets if we're done */
-//             if(this->next != NULL) {
-//                 if(this->type == TYPE_BOOL) {
-//                     bit += this->count % 8;
-//                     byte += this->count / 8;
-//                     if(bit > 7) { /* adjust for the overflow */
-//                         bit %= 8;
-//                         byte ++;
-//                     }
-//                     /* if the next one is not a BOOL then we should align */
-//                     if(this->next->type != TYPE_BOOL && bit != 0) {
-//                         bit = 0;
-//                         byte++;
-//                     }
-//                 } else { /* Not this->type == DAX_BOOL */
-//                     bit = 0;
-//                     byte += type_size(this->type) * this->count;
-//                 }
-//             }
-//             this = this->next;
-//         }
-//     }
-//     return 0;
-// }
+        this = dt->members;
+        while(this != NULL) {
+            iter.name = this->name;
+            iter.type = this->type;
+            iter.count = this->count;
+            iter.bit = bit;
+            iter.byte = byte;
+            callback(iter, udata); /* Call the callback */
+            /* No sense in calculating the offsets if we're done */
+            if(this->next != NULL) {
+                if(this->type == TYPE_BOOL) {
+                    bit += this->count % 8;
+                    byte += this->count / 8;
+                    if(bit > 7) { /* adjust for the overflow */
+                        bit %= 8;
+                        byte ++;
+                    }
+                    /* if the next one is not a BOOL then we should align */
+                    if(this->next->type != TYPE_BOOL && bit != 0) {
+                        bit = 0;
+                        byte++;
+                    }
+                } else { /* Not this->type == DAX_BOOL */
+                    bit = 0;
+                    byte += tag_type_size(db, this->type) * this->count;
+                }
+            }
+            this = this->next;
+        }
+    }
+    return 0;
+}
 
 
 /* This function builds a string that is a serialization of

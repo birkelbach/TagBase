@@ -62,12 +62,12 @@ typedef struct cdt_member {
 
 /* This is the structure that represents the container for each
  * datatype. */
-typedef struct cdt_t {
+struct cdt_t {
     char *name;
     uint8_t flags;
     unsigned int refcount; /* Number of tags of this type */
     cdt_member *members;
-} cdt_t;
+};
 
 
 typedef struct event_t {
@@ -128,6 +128,8 @@ struct tag_db_t {
 int validate_tagname(char *name);
 void cdt_inc_refcount(tag_db_t *db, tag_type type);
 void cdt_dec_refcount(tag_db_t *db, tag_type type);
+int serialize_datatype(tag_db_t *db, tag_type type, char **str);
+
 
 /* tagbase.c */
 int tag_read_raw(tag_db_t *db, tag_t *tag, int offset, void *data, int size);
@@ -184,14 +186,6 @@ typedef struct tag_queue {
     void **queue;    /* Pointer to the actual queue */
 } tag_queue;
 
-/* Custom Datatype Iterator */
-typedef struct cdt_iter {
-    const char *name;
-    tag_type type;
-    int count;
-    int byte;
-    int bit;
-} cdt_iter_t;
 
 
 #ifndef MIN
