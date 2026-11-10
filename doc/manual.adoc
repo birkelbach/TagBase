@@ -14,3 +14,8 @@ Phil Birkelbach
 
 include::introduction.adoc[]
 
+
+== Data Types
+
+include::datatypes.adoc[]
+

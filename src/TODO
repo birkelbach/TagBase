@@ -16,6 +16,13 @@ Do we want to add descriptions to tags??
 
 Own / Disown tag feature and test that owned tags cannot be deleted
 
+Reference counts for CDTs should be incremented when they are members
+of other CDTs
+
+Add a reference counter to tags that are incremented when tag handles are
+created and decremented when they are freed and use tha to keep tags from
+being deleted.
+
 Test Queue
 
 Add Overrides

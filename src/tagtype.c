@@ -395,9 +395,17 @@ tag_cdt_add_member(tag_db_t *db, cdt_t *cdt, char *name, tag_type type, uint32_t
     return 0;
 }
 
-int
+
+/*!
+ * Finalizes the creation of a tag.  Returns the type of the
+ * created type or zero on error.  The only error is a failure
+ * to allocate memory.
+ *
+ * */
+tag_type
 tag_cdt_finalize(tag_db_t *db, cdt_t *cdt) {
     cdt_t *new_datatype;
+    tag_type tt;
 
     /* Do we have space in the array */
     if(db->datatype_index == db->datatype_size) {
@@ -408,7 +416,7 @@ tag_cdt_finalize(tag_db_t *db, cdt_t *cdt) {
             db->datatypes = new_datatype;
             db->datatype_size += DATATYPE_SIZE;
         } else {
-            return ERR_ALLOC;
+            return 0;
         }
     }
 
@@ -417,9 +425,10 @@ tag_cdt_finalize(tag_db_t *db, cdt_t *cdt) {
     db->datatypes[db->datatype_index].members = cdt->members;
     db->datatypes[db->datatype_index].refcount = 0;
     db->datatypes[db->datatype_index].flags = 0;
+    tt = TYPE_CUSTOM | db->datatype_index;
     db->datatype_index++;
-    free(cdt);
-    return ERR_OK;
+    free(cdt);  /* We copied the members so we can free this */
+    return tt;
 }
 
 /* If creating the cdt fails from the user's side this

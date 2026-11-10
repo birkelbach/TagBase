@@ -1,5 +1,6 @@
 set(file_list manual.adoc
               introduction.adoc
+              datatypes.adoc
     )
 
 if(HAVE_ASCIIDOC_PDF)

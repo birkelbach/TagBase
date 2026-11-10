@@ -241,6 +241,14 @@ tag_t *tag_add_virtual(tag_db_t *db, char *name, tag_type type, uint32_t count, 
 int tag_delete(tag_db_t *db, tag_t *tag);
 tag_t *tag_get_by_name(tag_db_t *db, char *name);
 tag_handle_t *tag_gethandle(tag_db_t *db, char *str, int count, int *err);
+void tag_freehandle(tag_handle_t *h);
+char *tag_handle_name(tag_handle_t *h);
+tag_type tag_handle_type(tag_handle_t *h);
+uint32_t tag_handle_count(tag_handle_t *h);
+uint32_t tag_handle_byte(tag_handle_t *h);
+unsigned char tag_handle_bit(tag_handle_t *h);
+uint32_t tag_handle_size(tag_handle_t *h);
+
 void tag_list(tag_db_t *db, void (*f)(tag_t *, void *), void *udata);
 const char *tag_get_name(tag_t *tag);
 int tag_is_readonly(tag_t *tag);
@@ -263,7 +271,7 @@ int tag_unlock(tag_t *tag);
 tag_type tag_cdt_create(tag_db_t *db, char *str, int *error);
 cdt_t *tag_cdt_new(char *name, int *err);
 int tag_cdt_add_member(tag_db_t *db, cdt_t *cdt, char *name, tag_type type, uint32_t count);
-int tag_cdt_finalize(tag_db_t *db, cdt_t *cdt);
+tag_type tag_cdt_finalize(tag_db_t *db, cdt_t *cdt);
 void tag_cdt_free(cdt_t *cdt);
 
 tag_type tag_get_type(tag_db_t *db, char *name);

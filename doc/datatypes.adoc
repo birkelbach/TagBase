@@ -1,0 +1,30 @@
+Tags can be created as scalars or vectors (arrays) of the any one of the built in
+data types or as a custom data type.  The built in data types are given in the following
+list.
+
+.Base Data Types
+[%autowidth]
+|===
+|TYPE_BOOL  | Single Bit
+|TYPE_BYTE  | Single 8-bit Byte
+|TYPE_SINT  | 8 Bit signed integers
+|TYPE_CHAR  | Single Charachter
+|TYPE_WORD  | 16 bits
+|TYPE_INT   | 16 bit signed integer
+|TYPE_UINT  | 16 bit unsigned integer
+|TYPE_DWORD | 32 bits
+|TYPE_DINT  | 32 bit signed integer
+|TYPE_UDINT | 32 bit unsgined integer
+|TYPE_REAL  | 32 bit floating point
+|TYPE_LWORD | 64 bits
+|TYPE_LINT  | 64 bit signed integer
+|TYPE_ULINT | 64 bit unsigned integer
+|TYPE_TIME  | mSecs since the epoch
+|TYPE_LREAL | 64 bit floating point
+|===
+
+There are two ways to create a data type.  The first is to send a sting to
+`tag_cdt_create()` that represents the datatype that we want to create.  The second
+is to incrementally build the string with `tag_cdt_new()`, `tag_cdt_add_member()` and `tag_cdt_finalize()`
+
+To create a datatype with `tag_cdt_create()`

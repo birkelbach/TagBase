@@ -330,6 +330,36 @@ tag_freehandle(tag_handle_t *h) {
     }
 }
 
+char *
+tag_handle_name(tag_handle_t *h) {
+    return h->ptr->name;
+}
+
+tag_type
+tag_handle_type(tag_handle_t *h) {
+    return h->type;
+}
+
+uint32_t
+tag_handle_count(tag_handle_t *h) {
+    return h->count;
+}
+
+uint32_t
+tag_handle_byte(tag_handle_t *h) {
+    return h->byte;
+}
+
+unsigned char
+tag_handle_bit(tag_handle_t *h) {
+    return h->bit;
+}
+
+uint32_t
+tag_handle_size(tag_handle_t *h) {
+    return h->size;
+}
+
 
 /*!
  * Higher level tag reading function.  This function uses
